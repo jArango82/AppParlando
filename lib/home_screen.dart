@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'main_page.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -124,14 +125,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
                         const SizedBox(height: 20),
                       
-                        // Campo de Email
+                        // Campo de Usuario
                         TextField(
                           decoration: InputDecoration(
-                            labelText: "Correo Electrónico",
+                            labelText: "Usuario",
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            prefixIcon: const Icon(Icons.email, color: Colors.blue),
+                            prefixIcon: const Icon(Icons.person, color: Colors.blue),
                             focusedBorder: OutlineInputBorder( 
                               borderRadius: BorderRadius.circular(12),
                               borderSide: const BorderSide(color: Colors.blue, width: 2),
@@ -162,7 +163,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           width: double.infinity,
                           child: ElevatedButton(
                             onPressed: () {
-                              // Esteban aqui va ir la lógica de inicio de sesión
+                              // Esteban, nos vamos a la página principal con animacion suave
+                              Navigator.of(context).pushReplacement(
+                                MaterialPageRoute(builder: (context) => const MainPage()),
+                              );
                             },
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 15),
