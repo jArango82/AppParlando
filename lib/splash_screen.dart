@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'home_screen.dart'; // Esteban bb aquí es a donde iremos nosotros después del video
+import 'package:app_parlando/services/auth_service.dart';
+import 'main_page.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -24,6 +26,7 @@ class _SplashScreenState extends State<SplashScreen> {
     // Esteban, aquí preparamos el video que queremos mostrar
     _controller = VideoPlayerController.asset('assets/Splash-Screen.mp4')
       ..initialize().then((_) {
+        _controller.setPlaybackSpeed(1.5);
         // Esto nos asegura que el video esté listo para arrancar sin parpadeos bb
         setState(() {});
       });
@@ -36,7 +39,6 @@ class _SplashScreenState extends State<SplashScreen> {
     });
 
     // Primero mostramos nuestro logo por 2 segundos, y luego boom soltamos el video
-    // Arango, reduje el tiempo antes de reproducir porque queríamos que fuera fluido
     Timer(const Duration(seconds: 1), () {
       setState(() {
         _showVideo = true;
@@ -45,15 +47,29 @@ class _SplashScreenState extends State<SplashScreen> {
     });
   }
 
-  void _navigateToHome() {
-    // Listo bb, nos vamos a la Home sin animación de transición (instantáneo)
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(),
-        transitionDuration: Duration.zero,
-        reverseTransitionDuration: Duration.zero,
-      ),
-    );
+  Future<void> _navigateToHome() async {
+    // Check if user is logged in
+    final isLoggedIn = await AuthService().isLoggedIn();
+
+    if (!mounted) return;
+
+    if (isLoggedIn) {
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) => const MainPage(),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+        ),
+      );
+    } else {
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+        ),
+      );
+    }
   }
 
   @override
@@ -75,7 +91,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 aspectRatio: _controller.value.aspectRatio,
                 child: VideoPlayer(_controller),
               )
-            // Arango, mientras pasan los segundos iniciales no mostramos nada (SizedBox)
+            // bb mientras pasan los segundos iniciales no mostramos nada (SizedBox)
             // Solo se verá el color de fondo limpio, sin logo pre-cargado que parpadee
             : const SizedBox(), 
       ),

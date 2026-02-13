@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'main_page.dart';
+import 'services/auth_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,10 +15,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Animation<double>? _logoOffsetY; // Animación para mover el logo
   bool _initialized = false;
 
+  // Controllers
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
+
   @override
   void initState() {
     super.initState();
     _animationController = AnimationController(
+// ...
+
       vsync: this,
       duration: const Duration(seconds: 2), // Duración total de la secuencia
     );
@@ -35,7 +43,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_initialized) {
-      // Esteban aqui calculamos la distancia exacta para que el logo empiece en el CENTRO
+      // Calculamos la distancia exacta para que el logo empiece en el CENTRO
       final Size screenSize = MediaQuery.of(context).size;
       const double logoHeight = 350.0; // El tamaño del logo
       const double topSpace = 80.0;    // El SizedBox que pusimos arriba
@@ -64,6 +72,35 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   void dispose() {
     _animationController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
+    final user = _usernameController.text.trim();
+    final pass = _passwordController.text;
+
+    if (user.isEmpty || pass.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor completa los campos')));
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final res = await AuthService().login(user, pass);
+
+    setState(() => _isLoading = false);
+
+    if (res['success'] == true) {
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const MainPage()),
+      );
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(res['message'] ?? 'Error de autenticación'),
+        backgroundColor: Colors.red,
+      ));
+    }
   }
 
   @override
@@ -127,6 +164,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       
                         // Campo de Usuario
                         TextField(
+                          controller: _usernameController,
                           decoration: InputDecoration(
                             labelText: "Usuario",
                             border: OutlineInputBorder(
@@ -143,6 +181,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         
                         // Campo de Contraseña
                         TextField(
+                          controller: _passwordController,
                           obscureText: true,
                           decoration: InputDecoration(
                             labelText: "Contraseña",
@@ -162,12 +201,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: () {
-                              // Esteban, nos vamos a la página principal con animacion suave
-                              Navigator.of(context).pushReplacement(
-                                MaterialPageRoute(builder: (context) => const MainPage()),
-                              );
-                            },
+                            onPressed: _isLoading ? null : _handleLogin,
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 15),
                               backgroundColor: Colors.blue, 
@@ -175,14 +209,20 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            child: const Text(
-                              "Ingresar",
-                              style: TextStyle(
-                                fontSize: 18, 
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold
-                              ),
-                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    height: 24, 
+                                    width: 24, 
+                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                                  )
+                                : const Text(
+                                    "Ingresar",
+                                    style: TextStyle(
+                                      fontSize: 18, 
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold
+                                    ),
+                                  ),
                           ),
                         ),
 

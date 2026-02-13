@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'screens/home_page.dart';
+import 'screens/courses_screen.dart';
+import 'screens/profile_screen.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -8,16 +11,16 @@ class MainPage extends StatefulWidget {
 }
 
 class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin {
-  int _selectedIndex = 2; // Inicio en el centro
+  int _selectedIndex = 0; // Inicio en la pagina principal (Home)
   late AnimationController _animationController;
   late Animation<double> _positionAnimation; // Controla la posición horizontal (índice)
 
   // Iconos
   final List<IconData> _icons = [
-    Icons.grid_view,
+    Icons.home,
+    Icons.school,
+    Icons.description,
     Icons.format_list_bulleted,
-    Icons.swap_horiz,
-    Icons.layers_outlined,
     Icons.person_outline,
   ];
 
@@ -28,8 +31,8 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
        vsync: this, 
        duration: const Duration(milliseconds: 300) 
     );
-    // Empezamos en la posición 2.0
-    _positionAnimation = Tween<double>(begin: 2.0, end: 2.0).animate(_animationController);
+    // Empezamos en la posición 0.0 (Home)
+    _positionAnimation = Tween<double>(begin: 0.0, end: 0.0).animate(_animationController);
   }
 
   void _onItemTapped(int index) {
@@ -72,16 +75,16 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
           // CONTENIDO DE LA PÁGINA (Limpio)
           Positioned.fill(
              bottom: 80,
-             child: Center(
-              child: Text(
-                "Página ${_selectedIndex + 1}",
-                style: TextStyle(
-                  fontSize: 24, 
-                  color: Colors.grey[800], 
-                  fontWeight: FontWeight.bold
-                ),
-              ),
-            ),
+             child: IndexedStack(
+               index: _selectedIndex,
+               children: [
+                 const HomePage(), // Página 0 - Inicio
+                 const CoursesScreen(), // Página 1 - Cursos
+                 const Center(child: Text("Descripción", style: TextStyle(fontSize: 24))), // Página 2
+                 const Center(child: Text("Lista", style: TextStyle(fontSize: 24))), // Página 3
+                 const ProfileScreen(), // Página 4 - Perfil
+               ],
+             ),
           ),
 
           // BARRA DE NAVEGACIÓN (Adaptada a Azul)
@@ -129,7 +132,7 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.blue.withOpacity(0.3), // Sombra azulada
+                                color: Colors.blue.withValues(alpha: 0.3), // Sombra azulada
                                 blurRadius: 10,
                                 offset: const Offset(0, 5),
                               ),
@@ -141,7 +144,7 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
                               return ScaleTransition(scale: animation, child: child);
                             },
                             child: Icon(
-                              _icons[_selectedIndex], 
+                              _selectedIndex == 4 ? Icons.person : _icons[_selectedIndex], 
                               key: ValueKey<int>(_selectedIndex),
                               color: Colors.blue, // <--- ICONO ACTIVO AZUL
                               size: 28,
@@ -251,7 +254,7 @@ class SlidingNavBarPainter extends CustomPainter {
     path.lineTo(0, size.height);
     path.close();
 
-    canvas.drawShadow(path.shift(const Offset(0, -2)), Colors.black.withOpacity(0.1), 4.0, true);
+    canvas.drawShadow(path.shift(const Offset(0, -2)), Colors.black.withValues(alpha: 0.1), 4.0, true);
     canvas.drawPath(path, paint);
   }
 
