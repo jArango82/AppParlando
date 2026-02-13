@@ -17,7 +17,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
   Map<String, dynamic> _partsConfig = {};
   List<MapEntry<String, dynamic>> _partsList = [];
   int _currentPartIndex = 0;
-  int? _expandedTopicIndex; // Which topic is expanded
+  int? _expandedTopicIndex; // Indica qué tema está expandido actualmente en la lista.
 
   late Color _accentColor;
 
@@ -36,10 +36,10 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
   void _loadConfig() {
     final shortname = widget.course['shortname'] ?? '';
     final fullname = widget.course['fullname'] ?? '';
-    print('Debug CourseDetails: shortname="$shortname" fullname="$fullname"');
+    print('Depuración CourseDetails: shortname="$shortname" fullname="$fullname"');
     _partsConfig = CourseConfig.getPartsForCourse(shortname, fullname: fullname);
     _partsList = _partsConfig.entries.toList();
-    print('Debug CourseDetails: Found ${_partsList.length} parts');
+    print('Depuración CourseDetails: Se encontraron ${_partsList.length} partes');
   }
 
   void _resolveAccentColor() {
@@ -81,7 +81,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
       backgroundColor: const Color(0xFFF8F9FB),
       appBar: AppBar(
         title: Text(
-          widget.course['fullname'] ?? 'Course',
+          widget.course['fullname'] ?? 'Curso',
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
         ),
         backgroundColor: Colors.white,
@@ -107,14 +107,14 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                   children: [
                     Icon(Icons.error_outline, size: 60, color: Colors.red[300]),
                     const SizedBox(height: 16),
-                    Text('Error: ${snapshot.error}', textAlign: TextAlign.center,
+                    Text('Error cargando detalles: ${snapshot.error}', textAlign: TextAlign.center,
                       style: TextStyle(color: Colors.grey[600])),
                   ],
                 ),
               ),
             );
           } else if (!snapshot.hasData) {
-            return const Center(child: Text('No content available'));
+            return const Center(child: Text('No hay contenido disponible'));
           }
 
           final sections = snapshot.data!['sections'] as List<dynamic>;
@@ -133,7 +133,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
     );
   }
 
-  // ── PART VIEW ──────────────────────────────────────────────
+  // ── VISTA DE PARTES ──────────────────────────────────────────────
 
   Widget _buildPartView(List<dynamic> allSections) {
     final currentEntry = _partsList[_currentPartIndex];
@@ -142,24 +142,25 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
     final List<int> allowedIds = List<int>.from(config['ids']);
     final int totalExpected = config['totalExercises'];
 
-    // Debug: print all section IDs to understand the data
+    // Imprimimos todos los IDs de sección para entender los datos que recibimos
     if (_currentPartIndex == 0) {
       for (var s in allSections) {
         final modules = s['modules'] as List<dynamic>? ?? [];
-        print('Debug Section: id=${s['id']} section=${s['section']} name="${s['name']}" modules=${modules.length}');
+        print('Depuración Sección: id=${s['id']} section=${s['section']} name="${s['name']}" modules=${modules.length}');
       }
-      print('Debug AllowedIds for "$partName": $allowedIds');
+      print('Depuración AllowedIds para "$partName": $allowedIds');
     }
 
-    // Filter by 'section' number (not 'id' which is the DB primary key)
-    // Also skip sections with no modules
+    // Filtramos por número de 'section' (concepto lógico de orden),
+    // no por 'id' que es la llave primaria en la base de datos.
+    // También omitimos secciones que no tengan módulos (contenido vacío).
     final partSections = allSections.where((s) {
       final sectionNum = int.tryParse(s['section'].toString());
       final modules = s['modules'] as List<dynamic>? ?? [];
       return sectionNum != null && allowedIds.contains(sectionNum) && modules.isNotEmpty;
     }).toList();
 
-    // Progress
+    // Cálculo del progreso dentro de esta parte específica
     int completedCount = 0;
     int totalModules = 0;
     for (var s in partSections) {
@@ -175,10 +176,10 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
 
     return Column(
       children: [
-        // Banner
+        // Banner Principal de la Parte
         _buildPartBanner(partName, progress, completedCount, denominator, partSections.length),
 
-        // Topics List
+        // Lista de Temas (Scrollable)
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
@@ -187,13 +188,13 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
           ),
         ),
 
-        // Bottom Nav
+        // Barra de Navegación Inferior
         _buildBottomNav(),
       ],
     );
   }
 
-  // ── PART BANNER ────────────────────────────────────────────
+  // ── BANNER DE PARTE ────────────────────────────────────────────
 
   Widget _buildPartBanner(String partName, double progress, int completed, int total, int topicCount) {
     return Container(
@@ -224,7 +225,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  'Part ${_currentPartIndex + 1} of ${_partsList.length}',
+                  'Parte ${_currentPartIndex + 1} de ${_partsList.length}',
                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12),
                 ),
               ),
@@ -240,7 +241,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                     const Icon(Icons.topic_outlined, color: Colors.white, size: 14),
                     const SizedBox(width: 4),
                     Text(
-                      '$topicCount topics',
+                      '$topicCount temas',
                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12),
                     ),
                   ],
@@ -276,16 +277,16 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
     );
   }
 
-  // ── TOPIC CARD (expandable) ────────────────────────────────
+  // ── TARJETA DE TEMA (expandible) ────────────────────────────────
 
   Widget _buildTopicCard(dynamic section, int index) {
     final modules = section['modules'] as List<dynamic>? ?? [];
     if (modules.isEmpty) return const SizedBox.shrink();
 
-    final sectionName = section['name']?.toString() ?? 'Topic ${index + 1}';
+    final sectionName = section['name']?.toString() ?? 'Tema ${index + 1}';
     final bool isExpanded = _expandedTopicIndex == index;
 
-    // Count completed in this topic
+    // Contamos las actividades completadas dentro de este tema específico
     int topicCompleted = 0;
     for (var m in modules) {
       if (m['completionState'] == 1 || m['completionState'] == 2) topicCompleted++;
@@ -315,7 +316,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
       ),
       child: Column(
         children: [
-          // Topic Header (tappable)
+          // Encabezado del tema (se puede tocar para expandir)
           Material(
             color: Colors.transparent,
             borderRadius: BorderRadius.circular(16),
@@ -330,7 +331,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    // Number badge
+                    // Insignia con el número del tema
                     Container(
                       width: 40,
                       height: 40,
@@ -354,7 +355,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                       ),
                     ),
                     const SizedBox(width: 14),
-                    // Title + progress
+                    // Título y barra de progreso pequeña
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -372,7 +373,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                           const SizedBox(height: 6),
                           Row(
                             children: [
-                              // Mini progress bar
+                              // Mini barra de progreso
                               SizedBox(
                                 width: 60,
                                 child: ClipRRect(
@@ -401,7 +402,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                         ],
                       ),
                     ),
-                    // Expand icon
+                    // Icono de expansión (flecha)
                     AnimatedRotation(
                       turns: isExpanded ? 0.5 : 0.0,
                       duration: const Duration(milliseconds: 200),
@@ -417,7 +418,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
             ),
           ),
 
-          // Expanded exercises
+          // Lista de ejercicios desplegada
           AnimatedSize(
             duration: const Duration(milliseconds: 250),
             curve: Curves.easeInOut,
@@ -442,7 +443,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
     );
   }
 
-  // ── EXERCISE ITEM (inside expanded topic) ──────────────────
+  // ── ITEM DE EJERCICIO (dentro del tema expandido) ──────────────────
 
   Widget _buildExerciseItem(dynamic module) {
     bool isCompleted = module['completionState'] == 1 || module['completionState'] == 2;
@@ -489,7 +490,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => ExerciseWebViewScreen(
-                title: module['name'] ?? 'Exercise',
+                title: module['name'] ?? 'Ejercicio',
                 url: url,
               )),
             );
@@ -504,7 +505,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  module['name'] ?? 'Activity',
+                  module['name'] ?? 'Actividad',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
@@ -535,7 +536,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
     );
   }
 
-  // ── BOTTOM NAV ─────────────────────────────────────────────
+  // ── NAVEGACIÓN INFERIOR ──────────────────────────────────────────────
 
   Widget _buildBottomNav() {
     final bool hasPrev = _currentPartIndex > 0;
@@ -556,7 +557,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
               child: OutlinedButton.icon(
                 onPressed: _prevPart,
                 icon: const Icon(Icons.arrow_back_ios, size: 14),
-                label: const Text('Previous', style: TextStyle(fontWeight: FontWeight.w600)),
+                label: const Text('Anterior', style: TextStyle(fontWeight: FontWeight.w600)),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: _accentColor,
                   side: BorderSide(color: _accentColor.withOpacity(0.3)),
@@ -580,7 +581,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('Next Part', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    Text('Siguiente Parte', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                     SizedBox(width: 6),
                     Icon(Icons.arrow_forward_ios, size: 14),
                   ],
@@ -601,7 +602,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                   children: [
                     Icon(Icons.flag_rounded, color: Colors.green, size: 20),
                     SizedBox(width: 8),
-                    Text('Last Part', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 15)),
+                    Text('Última Parte', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 15)),
                   ],
                 ),
               ),
@@ -620,7 +621,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                   children: [
                     Icon(Icons.flag_rounded, color: Colors.green, size: 20),
                     SizedBox(width: 8),
-                    Text('Last Part', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 15)),
+                    Text('Última Parte', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 15)),
                   ],
                 ),
               ),
