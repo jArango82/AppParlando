@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/course_service.dart';
 import 'course_details_screen.dart';
+import '../widgets/custom_loading_indicator.dart';
 
 class CoursesScreen extends StatefulWidget {
   const CoursesScreen({super.key});
@@ -47,7 +48,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
         future: _coursesFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: CustomLoadingIndicator(size: 80));
           } else if (snapshot.hasError) {
             return Center(
               child: Column(

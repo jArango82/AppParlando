@@ -11,8 +11,8 @@ class CourseService {
       final token = await AuthService().getToken();
       if (token == null) throw Exception('No session token');
 
-      final userInfo = await _getSiteInfo(token);
-      final int userId = userInfo['userid'];
+      final userData = await AuthService().getUserData();
+      final int userId = userData != null ? userData['moodle_id'] : (await _getSiteInfo(token))['userid'];
 
       final courses = await _getEnrolledCourses(token, userId);
       return courses;
@@ -26,14 +26,17 @@ class CourseService {
       final token = await AuthService().getToken();
       if (token == null) throw Exception('No session token');
 
-      final userInfo = await _getSiteInfo(token);
-      final int userId = userInfo['userid'];
+      final userData = await AuthService().getUserData();
+      final int userId = userData != null ? userData['moodle_id'] : (await _getSiteInfo(token))['userid'];
 
-      // 1. Get Course Contents
-      final sections = await _getCourseContents(token, courseId);
+      // Parallelize requests
+      final results = await Future.wait([
+        _getCourseContents(token, courseId),
+        _getGrades(token, courseId, userId),
+      ]);
 
-      // 2. Get Grades
-      final grades = await _getGrades(token, courseId, userId);
+      final sections = results[0];
+      final grades = results[1];
 
       // 3. Merge Data
       _mergeGradesIntoSections(sections, grades);
@@ -52,10 +55,19 @@ class CourseService {
         throw Exception('No session token found. Please login again.');
       }
 
-      // 2. Get Site Info (User ID & Correct Name)
-      final userInfo = await _getSiteInfo(token);
-      final int userId = userInfo['userid'];
-      final String fullname = userInfo['fullname'];
+      // 2. Get User ID & Name (locally if possible)
+      int userId;
+      String fullname;
+      final userData = await AuthService().getUserData();
+      
+      if (userData != null) {
+        userId = userData['moodle_id'];
+        fullname = userData['fullname'] ?? 'User';
+      } else {
+        final userInfo = await _getSiteInfo(token);
+        userId = userInfo['userid'];
+        fullname = userInfo['fullname'];
+      }
 
       // 3. Get Enrolled Courses (using user token, not admin)
       // core_enrol_get_users_courses works for self enrollments
@@ -73,14 +85,14 @@ class CourseService {
       final course = courses.first; 
       final int courseId = course['id'];
 
-      // 4. Get Course Contents
-      // Use User Token for contents? Usually needs capability. 
-      // core_course_get_contents is usually available to students for their enrolled courses.
-      final sections = await _getCourseContents(token, courseId);
+      // 4. Get Course Contents & Grades in Parallel
+      final results = await Future.wait([
+        _getCourseContents(token, courseId),
+        _getGrades(token, courseId, userId),
+      ]);
 
-      // 5. Get Grades
-      // gradereport_user_get_grade_items usually available to students for self
-      final grades = await _getGrades(token, courseId, userId);
+      final sections = results[0];
+      final grades = results[1];
 
       // 6. Merge Data
       _mergeGradesIntoSections(sections, grades);

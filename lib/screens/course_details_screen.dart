@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/course_service.dart';
 import '../config/course_config.dart';
 import 'exercise_webview_screen.dart';
+import '../widgets/custom_loading_indicator.dart';
 
 class CourseDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> course;
@@ -97,7 +98,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
         future: _detailsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: CustomLoadingIndicator(size: 80));
           } else if (snapshot.hasError) {
             return Center(
               child: Padding(

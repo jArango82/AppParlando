@@ -73,6 +73,7 @@ flutter:
     - assets/A2.webp
     - assets/B1.webp
     - assets/B2.webp
+    - assets/Loading_Frames/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

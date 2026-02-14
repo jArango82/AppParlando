@@ -80,8 +80,8 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
                children: [
                  const HomePage(), // Página 0 - Inicio
                  const CoursesScreen(), // Página 1 - Cursos
-                 const Center(child: Text("Descripción", style: TextStyle(fontSize: 24))), // Página 2
-                 const Center(child: Text("Lista", style: TextStyle(fontSize: 24))), // Página 3
+                 const Center(child: Text("Diagnosticos", style: TextStyle(fontSize: 24))), // Página 2
+                 const Center(child: Text("Notas", style: TextStyle(fontSize: 24))), // Página 3
                  const ProfileScreen(), // Página 4 - Perfil
                ],
              ),

@@ -6,6 +6,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import '../services/auth_service.dart';
 import '../services/student_service.dart';
 import '../home_screen.dart';
+import '../widgets/custom_loading_indicator.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -120,7 +121,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CustomLoadingIndicator(size: 80));
     }
 
     final user = _studentData ?? {};

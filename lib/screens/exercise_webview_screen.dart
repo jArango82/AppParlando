@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../services/auth_service.dart';
+import '../widgets/custom_loading_indicator.dart';
 
 class ExerciseWebViewScreen extends StatefulWidget {
   final String title;
@@ -250,14 +251,7 @@ class _ExerciseWebViewScreenState extends State<ExerciseWebViewScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    SizedBox(
-                      width: 36,
-                      height: 36,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 3,
-                        color: Colors.blue,
-                      ),
-                    ),
+                    CustomLoadingIndicator(size: 50),
                     SizedBox(height: 16),
                     Text(
                       'Loading exercise...',

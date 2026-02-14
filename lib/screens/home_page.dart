@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/course_service.dart';
 import '../services/auth_service.dart';
 import 'course_details_screen.dart';
+import '../widgets/custom_loading_indicator.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -77,7 +78,7 @@ class _HomePageState extends State<HomePage> {
     if (_user == null) {
       return const Scaffold(
         backgroundColor: Color(0xFFF8F9FB),
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(child: CustomLoadingIndicator(size: 80)),
       );
     }
 
@@ -520,7 +521,7 @@ class _HomePageState extends State<HomePage> {
         borderRadius: BorderRadius.circular(22),
       ),
       child: const Center(
-        child: CircularProgressIndicator(color: Color(0xFF2A60E4), strokeWidth: 3),
+        child: CustomLoadingIndicator(size: 50),
       ),
     );
   }

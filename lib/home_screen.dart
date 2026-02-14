@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'main_page.dart';
 import 'services/auth_service.dart';
+import 'widgets/custom_loading_indicator.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -211,9 +212,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             ),
                             child: _isLoading
                                 ? const SizedBox(
-                                    height: 24, 
-                                    width: 24, 
-                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                                    height: 30, 
+                                    width: 30, 
+                                    child: CustomLoadingIndicator(size: 30),
                                   )
                                 : const Text(
                                     "Ingresar",
