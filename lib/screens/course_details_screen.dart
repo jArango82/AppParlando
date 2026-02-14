@@ -166,6 +166,11 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
     for (var s in partSections) {
       if (s['modules'] != null) {
         for (var m in s['modules']) {
+          // Excluir videos del conteo de progreso
+          if (m['name'] != null && m['name'].toString().toLowerCase().contains('video')) {
+            continue;
+          }
+          
           totalModules++;
           if (m['completionState'] == 1 || m['completionState'] == 2) completedCount++;
         }
@@ -286,12 +291,25 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
     final sectionName = section['name']?.toString() ?? 'Tema ${index + 1}';
     final bool isExpanded = _expandedTopicIndex == index;
 
+    // Filtramos los módulos para excluir videos del cálculo de progreso
+    final validModules = modules.where((m) {
+      final name = m['name']?.toString().toLowerCase() ?? '';
+      return !name.contains('video');
+    }).toList();
+
     // Contamos las actividades completadas dentro de este tema específico
     int topicCompleted = 0;
-    for (var m in modules) {
+    for (var m in validModules) {
       if (m['completionState'] == 1 || m['completionState'] == 2) topicCompleted++;
     }
-    final bool allDone = topicCompleted == modules.length && modules.isNotEmpty;
+    
+    // Para determinar si "todo está hecho", usamos solo las actividades válidas
+    // Si no hay actividades válidas (todo videos), consideramos "hecho" 
+    // si el usuario ha visto al menos el contenido, pero visualmente marcamos check.
+    // OJO: Si solo hay videos, validModules.isEmpty es true.
+    final bool allDone = validModules.isNotEmpty && topicCompleted == validModules.length;
+    // Si queremos mantener la barra llena incluso si son solo videos:
+    // final double progressValue = validModules.isNotEmpty ? topicCompleted / validModules.length : (modules.isNotEmpty ? 1.0 : 0.0);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -379,7 +397,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(3),
                                   child: LinearProgressIndicator(
-                                    value: modules.isNotEmpty ? topicCompleted / modules.length : 0,
+                                    value: validModules.isNotEmpty ? topicCompleted / validModules.length : 0,
                                     backgroundColor: Colors.grey[200],
                                     valueColor: AlwaysStoppedAnimation<Color>(
                                       allDone ? Colors.green : _accentColor,
@@ -390,7 +408,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                '$topicCompleted/${modules.length}',
+                                '$topicCompleted/${validModules.length}',
                                 style: TextStyle(
                                   color: Colors.grey[500],
                                   fontSize: 12,
@@ -447,8 +465,12 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
 
   Widget _buildExerciseItem(dynamic module) {
     bool isCompleted = module['completionState'] == 1 || module['completionState'] == 2;
-    final String? grade = module['grade'];
-    if (grade != null && grade != '-') isCompleted = true;
+    String? grade = module['grade'];
+    
+    // Check original grade to determine completion if needed
+    if (grade != null && grade != '-') {
+      isCompleted = true;
+    }
 
     IconData icon;
     Color iconColor;
@@ -515,19 +537,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              if (grade != null && grade != '-')
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    grade,
-                    style: TextStyle(color: Colors.green[700], fontSize: 11, fontWeight: FontWeight.bold),
-                  ),
-                )
-              else if (!isCompleted)
+              if (!isCompleted)
                 Icon(Icons.arrow_forward_ios, color: Colors.grey[300], size: 14),
             ],
           ),
