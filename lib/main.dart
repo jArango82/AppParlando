@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'splash_screen.dart';
+import 'services/notification_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Inicializar el servicio de notificaciones locales
+  await NotificationService().initialize();
+  
   runApp(const MainApp());
 }
 
@@ -20,5 +26,3 @@ class MainApp extends StatelessWidget {
     );
   }
 }
-
-

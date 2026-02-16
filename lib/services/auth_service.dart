@@ -232,6 +232,8 @@ class AuthService {
     await prefs.remove(_keyUser);
     await prefs.remove(_keyCredentials);
     await prefs.remove(_keyMoodleSession);
+    // Limpiar el timestamp de notificación para que al volver a iniciar sesión se muestre inmediatamente
+    await prefs.remove('last_contract_notification_time');
   }
 
   Future<bool> isLoggedIn() async {

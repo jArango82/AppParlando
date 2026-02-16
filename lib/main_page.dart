@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'screens/home_page.dart';
 import 'screens/courses_screen.dart';
 import 'screens/profile_screen.dart';
+import 'services/notification_service.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -33,6 +34,11 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
     );
     // Empezamos en la posición 0.0 (Home)
     _positionAnimation = Tween<double>(begin: 0.0, end: 0.0).animate(_animationController);
+
+    // Verificar y mostrar notificación de contrato después de que la UI se cargue
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NotificationService().checkAndShowContractNotification();
+    });
   }
 
   void _onItemTapped(int index) {
@@ -80,8 +86,8 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
                children: [
                  const HomePage(), // Página 0 - Inicio
                  const CoursesScreen(), // Página 1 - Cursos
-                 const Center(child: Text("Diagnosticos", style: TextStyle(fontSize: 24))), // Página 2
-                 const Center(child: Text("Notas", style: TextStyle(fontSize: 24))), // Página 3
+                 const Center(child: Text("Descripción", style: TextStyle(fontSize: 24))), // Página 2
+                 const Center(child: Text("Lista", style: TextStyle(fontSize: 24))), // Página 3
                  const ProfileScreen(), // Página 4 - Perfil
                ],
              ),
