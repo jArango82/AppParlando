@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:app_parlando/services/auth_service.dart';
 
 class CourseService {
-  static const String _moodleBaseUrl = 'https://campus.parlandolingue.edu.co';
+  static const String _moodleBaseUrl = 'https://campus.parlandolingue.com';
   static const String _restUrl = '$_moodleBaseUrl/webservice/rest/server.php';
 
   Future<List<dynamic>> getCourses() async {

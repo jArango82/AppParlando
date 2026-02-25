@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
   // URLs principales del sistema
-  static const String _moodleBaseUrl = 'https://campus.parlandolingue.edu.co';
+  static const String _moodleBaseUrl = 'https://campus.parlandolingue.com';
   static const String _tokenUrl = '$_moodleBaseUrl/login/token.php';
   static const String _restUrl = '$_moodleBaseUrl/webservice/rest/server.php';
   
@@ -234,6 +234,9 @@ class AuthService {
     await prefs.remove(_keyMoodleSession);
     // Limpiar el timestamp de notificación para que al volver a iniciar sesión se muestre inmediatamente
     await prefs.remove('last_contract_notification_time');
+    // Limpiar datos de insignias para que se recalculen al iniciar sesión
+    await prefs.remove('earned_badges');
+    await prefs.remove('shown_badges');
   }
 
   Future<bool> isLoggedIn() async {

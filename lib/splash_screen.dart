@@ -15,6 +15,8 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen> {
   late VideoPlayerController _controller;
   bool _showVideo = false;
+  bool _hasNavigated = false;
+  Timer? _safetyTimer;
 
   @override
   void initState() {
@@ -29,13 +31,24 @@ class _SplashScreenState extends State<SplashScreen> {
         _controller.setPlaybackSpeed(1.5);
         // Esto nos asegura que el video esté listo para arrancar sin parpadeos bb
         setState(() {});
+      }).catchError((error) {
+        // Si el video no puede inicializarse (ej: audio focus tomado), navegar directo
+        debugPrint('Error al inicializar video del splash: $error');
+        _navigateToHome();
       });
 
     // bb aquí escuchamos cuando el video termina para cambiar de pantalla
     _controller.addListener(() {
-      if (_controller.value.position >= _controller.value.duration) {
+      if (_controller.value.position >= _controller.value.duration &&
+          _controller.value.duration > Duration.zero) {
         _navigateToHome();
       }
+    });
+
+    // Timer de seguridad — si el video no termina en 8s, navegar de todos modos
+    _safetyTimer = Timer(const Duration(seconds: 8), () {
+      debugPrint('Splash: timeout de seguridad alcanzado, navegando...');
+      _navigateToHome();
     });
 
     // Primero mostramos nuestro logo por 2 segundos, y luego boom soltamos el video
@@ -48,6 +61,10 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _navigateToHome() async {
+    if (_hasNavigated) return;
+    _hasNavigated = true;
+    _safetyTimer?.cancel();
+
     // Check if user is logged in
     final isLoggedIn = await AuthService().isLoggedIn();
 
@@ -74,6 +91,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   void dispose() {
+    _safetyTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }

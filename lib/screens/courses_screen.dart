@@ -88,7 +88,9 @@ class _CoursesScreenState extends State<CoursesScreen> {
             );
           }
 
-          final courses = snapshot.data!;
+          final courses = snapshot.data!
+              .where((c) => c['id'] != 9 && c['id'] != 10)
+              .toList();
           
           return ListView.builder(
             padding: const EdgeInsets.all(16),
@@ -106,9 +108,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
   Widget _buildCourseCard(dynamic course) {
     final String fullname = course['fullname'] ?? 'Curso Desconocido';
     final String rawShortname = course['shortname'] ?? '';
-    final double? progress = course['progress'] != null 
-        ? (course['progress'] as num).toDouble() 
-        : null;
+    final int courseId = course['id'];
     
     // Extraemos el nivel real del nombre completo (ej. "Curso Ingles A1" → "A1")
     // Esto se usa para asignar la imagen y el color temático
@@ -230,38 +230,79 @@ class _CoursesScreenState extends State<CoursesScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (progress != null) ...[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Progreso',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      Text(
-                        '${progress.toStringAsFixed(0)}%',
-                        style: TextStyle(
-                          color: accentColor,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+                if (true) ...[
+                  FutureBuilder<Map<String, dynamic>>(
+                    future: CourseService().getCourseDetails(courseId),
+                    builder: (context, detailSnap) {
+                      if (detailSnap.connectionState == ConnectionState.waiting) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 20),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              backgroundColor: Colors.grey[200],
+                              valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                              minHeight: 8,
+                            ),
+                          ),
+                        );
+                      }
+
+                      if (!detailSnap.hasData) return const SizedBox.shrink();
+
+                      final sections = detailSnap.data!['sections'] as List<dynamic>? ?? [];
+                      int totalValid = 0;
+                      int completedValid = 0;
+                      for (var s in sections) {
+                        final modules = s['modules'] as List<dynamic>? ?? [];
+                        for (var m in modules) {
+                          final name = m['name']?.toString().toLowerCase() ?? '';
+                          if (name.contains('video')) continue;
+                          totalValid++;
+                          if (m['completionState'] == 1 || m['completionState'] == 2) {
+                            completedValid++;
+                          }
+                        }
+                      }
+                      final double progress = totalValid > 0 ? (completedValid / totalValid * 100) : 0;
+
+                      return Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Progreso',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Text(
+                                '${progress.toStringAsFixed(0)}%',
+                                style: TextStyle(
+                                  color: accentColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: (progress / 100).clamp(0.0, 1.0),
+                              backgroundColor: Colors.grey[200],
+                              valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                              minHeight: 8,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+                      );
+                    },
                   ),
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: progress / 100,
-                      backgroundColor: Colors.grey[200],
-                      valueColor: AlwaysStoppedAnimation<Color>(accentColor),
-                      minHeight: 8,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
                 ],
                 
                 SizedBox(

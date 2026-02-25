@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/course_service.dart';
+import '../services/badge_service.dart';
 import '../config/course_config.dart';
+import '../widgets/achievement_overlay.dart';
 import 'exercise_webview_screen.dart';
 import '../widgets/custom_loading_indicator.dart';
 
@@ -28,10 +30,77 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
     _loadDetails();
     _loadConfig();
     _resolveAccentColor();
+    // Verificamos badges al entrar, por si ya cumplió requisitos
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAndShowBadges();
+    });
   }
 
   void _loadDetails() {
     _detailsFuture = CourseService().getCourseDetails(widget.course['id']);
+  }
+
+  /// Verifica si se ganaron badges despues de regresar de un ejercicio.
+  Future<void> _checkAndShowBadges() async {
+    try {
+      final courseService = CourseService();
+      final badgeService = BadgeService();
+
+      // Cargar datos del curso actual y diagnósticos EN PARALELO
+      final results = await Future.wait([
+        courseService.getCourseDetails(widget.course['id']),
+        courseService.getCourseDetails(BadgeService.diagnosticCourseId),
+      ]);
+
+      final courseData = results[0];
+      final diagData = results[1];
+      final courseSections = courseData['sections'] as List<dynamic>? ?? [];
+      final diagnosticSections = diagData['sections'] as List<dynamic>? ?? [];
+
+      // Refrescar la UI del curso
+      if (mounted) {
+        setState(() {
+          _detailsFuture = Future.value(courseData);
+        });
+      }
+
+      // Obtener config de partes
+      final shortname = widget.course['shortname'] ?? '';
+      final fullname = widget.course['fullname'] ?? '';
+      final partsConfig = CourseConfig.getPartsForCourse(shortname, fullname: fullname);
+
+      // Verificar badges
+      final newBadges = await badgeService.checkForNewBadges(
+        courseSections: courseSections,
+        coursePartsConfig: partsConfig,
+        diagnosticSections: diagnosticSections,
+      );
+
+      if (mounted && newBadges.isNotEmpty) {
+        for (var badge in newBadges) {
+          List<Color> colors;
+          switch (badge.level) {
+            case 'A1': colors = [const Color(0xFF2A60E4), const Color(0xFF56CCF2)]; break;
+            case 'A2': colors = [const Color(0xFF1FAB5E), const Color(0xFF56E89C)]; break;
+            case 'B1': colors = [const Color(0xFFE67E22), const Color(0xFFF7C948)]; break;
+            case 'B2': colors = [const Color(0xFF8E44AD), const Color(0xFFC66DD8)]; break;
+            default: colors = [const Color(0xFF2A60E4), const Color(0xFF56CCF2)];
+          }
+
+          await AchievementOverlay.show(
+            context,
+            badgeAssetPath: badge.assetPath,
+            title: badge.title,
+            subtitle: badge.subtitle,
+            gradientColors: colors,
+          );
+
+          await badgeService.markBadgeShown(badge.id);
+        }
+      }
+    } catch (e) {
+      print('Debug CourseDetails: Error verificando badges: $e');
+    }
   }
 
   void _loadConfig() {
@@ -161,29 +230,30 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
       return sectionNum != null && allowedIds.contains(sectionNum) && modules.isNotEmpty;
     }).toList();
 
-    // Cálculo del progreso dentro de esta parte específica
+    // Cálculo del progreso: SOLO módulos con "ejercicio" en el nombre
     int completedCount = 0;
-    int totalModules = 0;
+    int exerciseCount = 0;
     for (var s in partSections) {
       if (s['modules'] != null) {
         for (var m in s['modules']) {
-          // Excluir videos del conteo de progreso
-          if (m['name'] != null && m['name'].toString().toLowerCase().contains('video')) {
-            continue;
+          final name = m['name']?.toString().toLowerCase() ?? '';
+          if (!name.contains('ejercicio')) continue;
+
+          exerciseCount++;
+          if (m['completionState'] == 1 || m['completionState'] == 2) {
+            completedCount++;
+          } else if (m['grade'] != null && m['grade'] != '-') {
+            completedCount++;
           }
-          
-          totalModules++;
-          if (m['completionState'] == 1 || m['completionState'] == 2) completedCount++;
         }
       }
     }
-    final denominator = totalExpected > 0 ? totalExpected : totalModules;
-    final double progress = denominator > 0 ? (completedCount / denominator).clamp(0.0, 1.0) : 0.0;
+    final double progress = exerciseCount > 0 ? (completedCount / exerciseCount).clamp(0.0, 1.0) : 0.0;
 
     return Column(
       children: [
         // Banner Principal de la Parte
-        _buildPartBanner(partName, progress, completedCount, denominator, partSections.length),
+        _buildPartBanner(partName, progress, completedCount, exerciseCount, partSections.length),
 
         // Lista de Temas (Scrollable)
         Expanded(
@@ -292,10 +362,10 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
     final sectionName = section['name']?.toString() ?? 'Tema ${index + 1}';
     final bool isExpanded = _expandedTopicIndex == index;
 
-    // Filtramos los módulos para excluir videos del cálculo de progreso
+    // Solo contamos módulos con "ejercicio" en el nombre para el progreso
     final validModules = modules.where((m) {
       final name = m['name']?.toString().toLowerCase() ?? '';
-      return !name.contains('video');
+      return name.contains('ejercicio');
     }).toList();
 
     // Contamos las actividades completadas dentro de este tema específico
@@ -516,7 +586,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                 title: module['name'] ?? 'Ejercicio',
                 url: url,
               )),
-            );
+            ).then((_) => _checkAndShowBadges());
           }
         },
         borderRadius: BorderRadius.circular(10),
@@ -553,91 +623,94 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
     final bool hasPrev = _currentPartIndex > 0;
     final bool hasNext = _currentPartIndex < _partsList.length - 1;
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, -4)),
-        ],
-      ),
-      child: Row(
-        children: [
-          if (hasPrev)
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _prevPart,
-                icon: const Icon(Icons.arrow_back_ios, size: 14),
-                label: const Text('Anterior', style: TextStyle(fontWeight: FontWeight.w600)),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: _accentColor,
-                  side: BorderSide(color: _accentColor.withOpacity(0.3)),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-              ),
-            ),
-          if (hasPrev && hasNext) const SizedBox(width: 12),
-          if (hasNext)
-            Expanded(
-              child: ElevatedButton(
-                onPressed: _nextPart,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _accentColor,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('Siguiente Parte', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                    SizedBox(width: 6),
-                    Icon(Icons.arrow_forward_ios, size: 14),
-                  ],
-                ),
-              ),
-            ),
-          if (!hasNext && hasPrev) ...[
-            const SizedBox(width: 12),
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.flag_rounded, color: Colors.green, size: 20),
-                    SizedBox(width: 8),
-                    Text('Última Parte', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 15)),
-                  ],
-                ),
-              ),
-            ),
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, -4)),
           ],
-          if (!hasNext && !hasPrev)
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.flag_rounded, color: Colors.green, size: 20),
-                    SizedBox(width: 8),
-                    Text('Última Parte', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 15)),
-                  ],
+        ),
+        child: Row(
+          children: [
+            if (hasPrev)
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _prevPart,
+                  icon: const Icon(Icons.arrow_back_ios, size: 14),
+                  label: const Text('Anterior', style: TextStyle(fontWeight: FontWeight.w600)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _accentColor,
+                    side: BorderSide(color: _accentColor.withOpacity(0.3)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
                 ),
               ),
-            ),
-        ],
+            if (hasPrev && hasNext) const SizedBox(width: 12),
+            if (hasNext)
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _nextPart,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _accentColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text('Siguiente Parte', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      SizedBox(width: 6),
+                      Icon(Icons.arrow_forward_ios, size: 14),
+                    ],
+                  ),
+                ),
+              ),
+            if (!hasNext && hasPrev) ...[
+              const SizedBox(width: 12),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.flag_rounded, color: Colors.green, size: 20),
+                      SizedBox(width: 8),
+                      Text('Última Parte', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 15)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+            if (!hasNext && !hasPrev)
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.flag_rounded, color: Colors.green, size: 20),
+                      SizedBox(width: 8),
+                      Text('Última Parte', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 15)),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

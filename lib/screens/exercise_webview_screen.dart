@@ -17,6 +17,7 @@ class _ExerciseWebViewScreenState extends State<ExerciseWebViewScreen> {
   WebViewController? _controller;
   bool _isLoading = true;
   bool _hasError = false;
+  bool _loginSubmitted = false;
 
   // Custom CSS to hide Moodle chrome and style the exercise
   static const String _customCss = '''
@@ -121,35 +122,39 @@ class _ExerciseWebViewScreenState extends State<ExerciseWebViewScreen> {
     _setupAndLoad();
   }
 
+  /// Escapa caracteres especiales para inyectar como string en JS.
+  String _escapeJs(String input) {
+    return input
+        .replaceAll('\\', '\\\\')
+        .replaceAll("'", "\\'")
+        .replaceAll('"', '\\"')
+        .replaceAll('\n', '\\n')
+        .replaceAll('\r', '\\r');
+  }
+
   Future<void> _setupAndLoad() async {
     try {
-      // 1. Get the MoodleSession cookie
-      final sessionCookie = await AuthService().getWebSessionCookie();
+      // 1. Obtener credenciales del usuario
+      final credentials = await AuthService().getCredentials();
 
-      if (sessionCookie == null) {
-        print('Debug: No session cookie available');
-        setState(() {
-          _hasError = true;
-          _isLoading = false;
-        });
+      if (credentials == null) {
+        print('Debug: No hay credenciales guardadas');
+        if (mounted) {
+          setState(() {
+            _hasError = true;
+            _isLoading = false;
+          });
+        }
         return;
       }
 
-      // 2. Inject the cookie into WebView's CookieManager
-      final cookieManager = WebViewCookieManager();
-      
-      await cookieManager.setCookie(
-        WebViewCookie(
-          name: 'MoodleSession',
-          value: sessionCookie,
-          domain: 'campus.parlandolingue.edu.co',
-          path: '/',
-        ),
-      );
+      final username = _escapeJs(credentials['username']!);
+      final password = _escapeJs(credentials['password']!);
+      final exerciseUrl = widget.url;
 
-      print('Debug: Cookie injected, loading exercise URL');
+      print('Debug: Iniciando login en WebView para cargar ejercicio');
 
-      // 3. Create WebViewController and load exercise URL directly
+      // 2. Crear WebViewController
       final controller = WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
         ..setBackgroundColor(Colors.white)
@@ -161,26 +166,62 @@ class _ExerciseWebViewScreenState extends State<ExerciseWebViewScreen> {
             onPageFinished: (url) async {
               print('Debug: Page finished: $url');
 
-              // Check if we got redirected to login (cookie expired)
-              if (url.contains('/login/')) {
-                print('Debug: Session expired, refreshing cookie...');
-                final newCookie = await AuthService().refreshWebSessionCookie();
-                if (newCookie != null) {
-                  await cookieManager.setCookie(
-                    WebViewCookie(
-                      name: 'MoodleSession',
-                      value: newCookie,
-                      domain: 'campus.parlandolingue.edu.co',
-                      path: '/',
-                    ),
-                  );
-                  // Reload the exercise
-                  _controller?.loadRequest(Uri.parse(widget.url));
+              // Si estamos en la página de login y aún no hemos enviado el formulario
+              if (url.contains('/login/') && !_loginSubmitted) {
+                _loginSubmitted = true;
+                print('Debug: Autocompletando formulario de login...');
+
+                // Inyectar JS que rellena el formulario y lo envía
+                await _controller?.runJavaScript('''
+                  (function() {
+                    var u = document.getElementById('username');
+                    var p = document.getElementById('password');
+                    var form = document.getElementById('login');
+                    if (u && p && form) {
+                      u.value = '$username';
+                      p.value = '$password';
+                      form.submit();
+                    } else {
+                      // Fallback: buscar por name
+                      var inputs = document.querySelectorAll('input');
+                      var userInput, passInput, formEl;
+                      for (var i = 0; i < inputs.length; i++) {
+                        if (inputs[i].name === 'username') userInput = inputs[i];
+                        if (inputs[i].name === 'password') passInput = inputs[i];
+                      }
+                      formEl = document.querySelector('form#login') || document.querySelector('form');
+                      if (userInput && passInput && formEl) {
+                        userInput.value = '$username';
+                        passInput.value = '$password';
+                        formEl.submit();
+                      }
+                    }
+                  })();
+                ''');
+                return;
+              }
+
+              // Si seguimos en login DESPUÉS de enviar el formulario → error de credenciales
+              if (url.contains('/login/') && _loginSubmitted) {
+                print('Debug: Login falló, mostrando error');
+                if (mounted) {
+                  setState(() {
+                    _hasError = true;
+                    _isLoading = false;
+                  });
                 }
                 return;
               }
 
-              // Inject custom CSS to hide Moodle UI and style the exercise
+              // Login exitoso: si no estamos en la URL del ejercicio, redirigir
+              if (!url.contains(Uri.parse(exerciseUrl).path)) {
+                print('Debug: Login exitoso, redirigiendo al ejercicio...');
+                _controller?.loadRequest(Uri.parse(exerciseUrl));
+                return;
+              }
+
+              // Ya estamos en el ejercicio, inyectar CSS y ocultar loading
+              print('Debug: Ejercicio cargado, inyectando CSS...');
               await _controller?.runJavaScript('''
                 (function() {
                   var style = document.createElement('style');
@@ -197,8 +238,12 @@ class _ExerciseWebViewScreenState extends State<ExerciseWebViewScreen> {
               print('Debug: WebView error: ${error.description}');
             },
           ),
-        )
-        ..loadRequest(Uri.parse(widget.url));
+        );
+
+      // 3. Primero intentamos cargar directo la URL del ejercicio.
+      //    Si la sesión es valida, cargará sin problemas.
+      //    Si no lo es, Moodle redirigirá a /login/ y el handler de arriba se encargará.
+      controller.loadRequest(Uri.parse(exerciseUrl));
 
       if (mounted) {
         setState(() {

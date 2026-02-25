@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import '../services/auth_service.dart';
 import '../services/student_service.dart';
+import '../services/course_service.dart';
+import '../services/badge_service.dart';
 import '../home_screen.dart';
 import '../widgets/custom_loading_indicator.dart';
 
@@ -20,7 +22,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic>? _studentData;
   bool _isLoading = true;
   final ImagePicker _picker = ImagePicker();
-  String? _localImageFile; // Ruta a la imagen seleccionada localmente
+  String? _localImageFile;
+  Map<String, String> _lastBadgePerLevel = {};
 
   @override
   void initState() {
@@ -63,6 +66,69 @@ class _ProfileScreenState extends State<ProfileScreen> {
          // Si falla, al menos mostramos los datos básicos de autenticación
        }
        setState(() => _isLoading = false);
+
+       // Cargar la última insignia ganada
+       _loadLastBadge();
+    }
+  }
+
+  Future<void> _loadLastBadge() async {
+    try {
+      final badgeService = BadgeService();
+      var earnedIds = await badgeService.getEarnedBadgeIds();
+
+      // Si no hay insignias locales, intentamos sincronizar con los cursos actuales
+      // Esto maneja el caso de inicio de sesión en una cuenta con progreso previo
+      if (earnedIds.isEmpty) {
+         try {
+           final courses = await CourseService().getCourses();
+           if (courses.isNotEmpty) {
+              // Buscar curso principal (que no sea diagnóstico)
+              final mainCourse = courses.firstWhere(
+                (c) => c['id'] != BadgeService.diagnosticCourseId,
+                orElse: () => courses.first,
+              );
+              
+              // Verificar badges contra la API
+              final newBadges = await badgeService.checkForNewBadgesFromApi(
+                courseId: mainCourse['id'],
+              );
+
+              // Marcar como mostrados para que no salten alertas,
+              // ya que estamos en el perfil solo sincronizando
+              for (var b in newBadges) {
+                await badgeService.markBadgeShown(b.id);
+              }
+
+              // Recargar lista de ganados
+              if (newBadges.isNotEmpty) {
+                earnedIds = await badgeService.getEarnedBadgeIds();
+              }
+           }
+         } catch (e) {
+           print('Debug: Error sync badges en perfil: $e');
+         }
+      }
+
+      if (earnedIds.isEmpty) return;
+
+      final Map<String, String> perLevel = {};
+      final levels = ['A1', 'A2', 'B1', 'B2'];
+
+      for (var level in levels) {
+        for (var badge in BadgeService.allBadges.reversed) {
+          if (badge.level == level && earnedIds.contains(badge.id)) {
+            perLevel[level] = badge.assetPath;
+            break;
+          }
+        }
+      }
+
+      if (mounted && perLevel.isNotEmpty) {
+        setState(() => _lastBadgePerLevel = perLevel);
+      }
+    } catch (e) {
+      print('Debug: Error cargando insignias: $e');
     }
   }
 
@@ -225,6 +291,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                  style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.w600, fontSize: 13),
                ),
             ),
+
+            // Insignias por nivel
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildLevelBadge('A1', const Color(0xFF2A60E4)),
+                const SizedBox(width: 10),
+                _buildLevelBadge('A2', const Color(0xFF1FAB5E)),
+                const SizedBox(width: 10),
+                _buildLevelBadge('B1', const Color(0xFFE67E22)),
+                const SizedBox(width: 10),
+                _buildLevelBadge('B2', const Color(0xFF8E44AD)),
+              ],
+            ),
+
             const SizedBox(height: 30),
 
             // 2. Tarjetas de Información Detallada
@@ -428,6 +510,68 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Text('Pagado en su totalidad', style: TextStyle(color: Colors.white, fontSize: 13)),
               ],
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLevelBadge(String level, Color color) {
+    final badgePath = _lastBadgePerLevel[level];
+    final bool hasBadge = badgePath != null;
+
+    return Container(
+      width: 72,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: hasBadge ? color.withValues(alpha: 0.3) : Colors.grey.withValues(alpha: 0.15),
+          width: 1.5,
+        ),
+        boxShadow: hasBadge
+            ? [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.12),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                ),
+              ]
+            : [],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Badge image o lock
+          hasBadge
+              ? Image.asset(
+                  badgePath,
+                  width: 38,
+                  height: 38,
+                  fit: BoxFit.contain,
+                )
+              : Icon(
+                  Icons.lock_outline_rounded,
+                  size: 28,
+                  color: Colors.grey[350],
+                ),
+          const SizedBox(height: 4),
+          // Label del nivel
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: hasBadge ? color.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              level,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: hasBadge ? color : Colors.grey[400],
+              ),
+            ),
+          ),
         ],
       ),
     );

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'screens/home_page.dart';
 import 'screens/courses_screen.dart';
+import 'screens/diagnostics_screen.dart';
+import 'screens/grades_screen.dart';
 import 'screens/profile_screen.dart';
 import 'services/notification_service.dart';
 
@@ -86,9 +88,10 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
                children: [
                  const HomePage(), // Página 0 - Inicio
                  const CoursesScreen(), // Página 1 - Cursos
-                 const Center(child: Text("Descripción", style: TextStyle(fontSize: 24))), // Página 2
-                 const Center(child: Text("Lista", style: TextStyle(fontSize: 24))), // Página 3
-                 const ProfileScreen(), // Página 4 - Perfil
+                 const DiagnosticsScreen(), // Página 2 - Diagnósticos
+                 const GradesScreen(), // Página 3 - Notas
+                 // Forzamos reconstrucción al entrar al perfil para actualizar datos (badges)
+                 ProfileScreen(key: _selectedIndex == 4 ? ValueKey(DateTime.now()) : null),
                ],
              ),
           ),
