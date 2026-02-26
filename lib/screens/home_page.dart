@@ -49,7 +49,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   String _getDailyTip() {
-    final dayOfYear = DateTime.now().difference(DateTime(DateTime.now().year, 1, 1)).inDays;
+    final dayOfYear =
+        DateTime.now().difference(DateTime(DateTime.now().year, 1, 1)).inDays;
     return _tips[dayOfYear % _tips.length];
   }
 
@@ -82,7 +83,8 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
-    final String firstName = _user!['fullname']?.split(' ').first ?? 'Estudiante';
+    final String firstName =
+        _user!['fullname']?.split(' ').first ?? 'Estudiante';
     final String? userImage = _user!['image_url'];
     final dailyTip = _getDailyTip();
 
@@ -122,7 +124,7 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 24),
 
                 // ── PRÁCTICA RÁPIDA ──────────────────
-                _buildSectionTitle('Práctica Rápida', Icons.bolt_rounded),
+                _buildSectionTitle('Qué aprenderás', Icons.bolt_rounded),
                 const SizedBox(height: 12),
                 _buildQuickPracticeGrid(),
                 const SizedBox(height: 24),
@@ -164,7 +166,10 @@ class _HomePageState extends State<HomePage> {
               backgroundImage: imageUrl != null ? NetworkImage(imageUrl) : null,
               child: imageUrl == null
                   ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'E',
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF2A60E4)))
+                      style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2A60E4)))
                   : null,
             ),
           ),
@@ -177,12 +182,18 @@ class _HomePageState extends State<HomePage> {
             children: [
               Text(
                 _getGreeting(),
-                style: TextStyle(color: Colors.grey[500], fontSize: 13, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                    color: Colors.grey[500],
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500),
               ),
               const SizedBox(height: 2),
               Text(
                 name,
-                style: const TextStyle(color: Colors.black87, fontSize: 22, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -193,8 +204,21 @@ class _HomePageState extends State<HomePage> {
 
   String _getFormattedDate() {
     final now = DateTime.now();
-    final months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-    return '${months[now.month-1]} ${now.day}';
+    final months = [
+      'Ene',
+      'Feb',
+      'Mar',
+      'Abr',
+      'May',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dic'
+    ];
+    return '${months[now.month - 1]} ${now.day}';
   }
 
   // ── CONTINUAR APRENDIENDO ──────────────────────────────────
@@ -203,11 +227,13 @@ class _HomePageState extends State<HomePage> {
     final course = data['course'];
     final sections = data['sections'] as List<dynamic>? ?? [];
 
-    // Extraer nivel  
+    // Extraer nivel
     String level = 'A1';
     final combined = '${course['fullname'] ?? ''} ${course['shortname'] ?? ''}';
-    if (combined.contains('A2')) level = 'A2';
-    else if (combined.contains('B1')) level = 'B1';
+    if (combined.contains('A2'))
+      level = 'A2';
+    else if (combined.contains('B1'))
+      level = 'B1';
     else if (combined.contains('B2')) level = 'B2';
 
     // Calcular progreso
@@ -219,7 +245,8 @@ class _HomePageState extends State<HomePage> {
       if (section['modules'] != null) {
         for (var module in section['modules']) {
           totalModules++;
-          if (module['completionState'] == 1 || module['completionState'] == 2) {
+          if (module['completionState'] == 1 ||
+              module['completionState'] == 2) {
             completedModules++;
           } else if (!foundNext) {
             nextLesson = module['name'] ?? 'Siguiente ejercicio';
@@ -229,26 +256,34 @@ class _HomePageState extends State<HomePage> {
       }
     }
 
-    final double progress = totalModules > 0 ? completedModules / totalModules : 0.0;
+    final double progress =
+        totalModules > 0 ? completedModules / totalModules : 0.0;
     final int progressPercent = (progress * 100).round();
 
     // Colores por nivel
     Color accentColor = const Color(0xFF2A60E4);
-    if (level == 'A2') accentColor = const Color(0xFF1FAB5E);
-    else if (level == 'B1') accentColor = const Color(0xFFE67E22);
+    if (level == 'A2')
+      accentColor = const Color(0xFF1FAB5E);
+    else if (level == 'B1')
+      accentColor = const Color(0xFFE67E22);
     else if (level == 'B2') accentColor = const Color(0xFF8E44AD);
 
     return GestureDetector(
       onTap: () {
-        Navigator.push(context, MaterialPageRoute(
-          builder: (context) => CourseDetailsScreen(course: course),
-        ));
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CourseDetailsScreen(course: course),
+            ));
       },
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(22),
           boxShadow: [
-            BoxShadow(color: accentColor.withOpacity(0.25), blurRadius: 20, offset: const Offset(0, 10)),
+            BoxShadow(
+                color: accentColor.withOpacity(0.25),
+                blurRadius: 20,
+                offset: const Offset(0, 10)),
           ],
         ),
         child: ClipRRect(
@@ -299,37 +334,51 @@ class _HomePageState extends State<HomePage> {
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 5),
                           decoration: BoxDecoration(
                             color: accentColor,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(level,
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12)),
                         ),
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 5),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text('$progressPercent% completado',
-                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600)),
                         ),
                       ],
                     ),
                     const Spacer(),
                     Text(
                       'Continuar Aprendiendo',
-                      style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                          color: Colors.white.withOpacity(0.7),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       nextLesson,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 12),
                     // Barra de progreso
@@ -341,19 +390,22 @@ class _HomePageState extends State<HomePage> {
                             child: LinearProgressIndicator(
                               value: progress,
                               backgroundColor: Colors.white.withOpacity(0.2),
-                              valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(accentColor),
                               minHeight: 6,
                             ),
                           ),
                         ),
                         const SizedBox(width: 14),
                         Container(
-                          width: 40, height: 40,
+                          width: 40,
+                          height: 40,
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Icon(Icons.play_arrow_rounded, color: accentColor, size: 24),
+                          child: Icon(Icons.play_arrow_rounded,
+                              color: accentColor, size: 24),
                         ),
                       ],
                     ),
@@ -387,10 +439,14 @@ class _HomePageState extends State<HomePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('Tip del Día',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFFE65100))),
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: Color(0xFFE65100))),
                 const SizedBox(height: 6),
                 Text(tip,
-                  style: TextStyle(color: Colors.grey[800], fontSize: 13, height: 1.5)),
+                    style: TextStyle(
+                        color: Colors.grey[800], fontSize: 13, height: 1.5)),
               ],
             ),
           ),
@@ -406,7 +462,11 @@ class _HomePageState extends State<HomePage> {
       children: [
         Icon(icon, size: 20, color: const Color(0xFF2A60E4)),
         const SizedBox(width: 8),
-        Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+        Text(title,
+            style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87)),
       ],
     );
   }
@@ -415,10 +475,30 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildQuickPracticeGrid() {
     final practices = [
-      {'icon': Icons.menu_book_rounded, 'title': 'Gramática', 'subtitle': 'Reglas y tiempos', 'color': const Color(0xFF2A60E4)},
-      {'icon': Icons.headphones_rounded, 'title': 'Escucha', 'subtitle': 'Ejercicios de audio', 'color': const Color(0xFF1FAB5E)},
-      {'icon': Icons.edit_rounded, 'title': 'Escritura', 'subtitle': 'Práctica escrita', 'color': const Color(0xFFE67E22)},
-      {'icon': Icons.quiz_rounded, 'title': 'Vocabulario', 'subtitle': 'Aprende palabras', 'color': const Color(0xFF8E44AD)},
+      {
+        'icon': Icons.menu_book_rounded,
+        'title': 'Gramática',
+        'subtitle': 'Reglas y tiempos',
+        'color': const Color(0xFF2A60E4)
+      },
+      {
+        'icon': Icons.headphones_rounded,
+        'title': 'Escucha',
+        'subtitle': 'Ejercicios de audio',
+        'color': const Color(0xFF1FAB5E)
+      },
+      {
+        'icon': Icons.edit_rounded,
+        'title': 'Escritura',
+        'subtitle': 'Práctica escrita',
+        'color': const Color(0xFFE67E22)
+      },
+      {
+        'icon': Icons.quiz_rounded,
+        'title': 'Vocabulario',
+        'subtitle': 'Aprende palabras',
+        'color': const Color(0xFF8E44AD)
+      },
     ];
 
     return GridView.builder(
@@ -428,7 +508,7 @@ class _HomePageState extends State<HomePage> {
         crossAxisCount: 2,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 1.6,
+        childAspectRatio: 1.3,
       ),
       itemCount: practices.length,
       itemBuilder: (context, index) {
@@ -440,7 +520,10 @@ class _HomePageState extends State<HomePage> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2)),
+              BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2)),
             ],
           ),
           child: Column(
@@ -457,9 +540,12 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 10),
               Text(p['title'] as String,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87)),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Colors.black87)),
               Text(p['subtitle'] as String,
-                style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                  style: TextStyle(fontSize: 11, color: Colors.grey[400])),
             ],
           ),
         );
@@ -494,11 +580,19 @@ class _HomePageState extends State<HomePage> {
               children: [
                 Text(
                   '"${_getMotivationalQuote()}"',
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87, fontStyle: FontStyle.italic, height: 1.4),
+                  style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                      fontStyle: FontStyle.italic,
+                      height: 1.4),
                 ),
                 const SizedBox(height: 6),
                 Text('— Motivación del Día',
-                  style: TextStyle(fontSize: 11, color: Colors.grey[400], fontWeight: FontWeight.w500)),
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[400],
+                        fontWeight: FontWeight.w500)),
               ],
             ),
           ),
