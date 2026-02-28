@@ -1,5 +1,6 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 import 'student_service.dart';
 
 class NotificationService {
@@ -12,7 +13,8 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   // Clave para guardar la última vez que se mostró la notificación
-  static const String _keyLastNotificationTime = 'last_contract_notification_time';
+  static const String _keyLastNotificationTime =
+      'last_contract_notification_time';
   // Intervalo de 72 horas entre notificaciones
   static const int _cooldownHours = 72;
 
@@ -24,7 +26,8 @@ class NotificationService {
         AndroidInitializationSettings('@mipmap/launcher_icon');
 
     // Configuración para iOS/macOS
-    const DarwinInitializationSettings iosSettings = DarwinInitializationSettings(
+    const DarwinInitializationSettings iosSettings =
+        DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
@@ -74,7 +77,8 @@ class NotificationService {
 
         if (elapsed.inHours < _cooldownHours) {
           // No han pasado 72 horas, no mostramos notificación
-          print('Debug: Notificación omitida. Faltan ${_cooldownHours - elapsed.inHours}h para la próxima.');
+          debugPrint(
+              'Debug: Notificación omitida. Faltan ${_cooldownHours - elapsed.inHours}h para la próxima.');
           return;
         }
       }
@@ -82,13 +86,16 @@ class NotificationService {
       // 2. Obtener datos del estudiante
       final studentData = await StudentService().getStudentProfile();
       if (studentData == null) {
-        print('Debug: No se encontraron datos del estudiante para notificación.');
+        debugPrint(
+            'Debug: No se encontraron datos del estudiante para notificación.');
         return;
       }
 
       final String? endDateStr = studentData['endDate'];
-      if (endDateStr == null || endDateStr.isEmpty || endDateStr == '0000-00-00') {
-        print('Debug: Fecha de fin de contrato no disponible.');
+      if (endDateStr == null ||
+          endDateStr.isEmpty ||
+          endDateStr == '0000-00-00') {
+        debugPrint('Debug: Fecha de fin de contrato no disponible.');
         return;
       }
 
@@ -103,11 +110,13 @@ class NotificationService {
 
       if (daysLeft < 0) {
         title = '⚠️ Contrato Vencido';
-        body = 'Tu contrato venció hace ${daysLeft.abs()} día${daysLeft.abs() == 1 ? '' : 's'}. '
+        body =
+            'Tu contrato venció hace ${daysLeft.abs()} día${daysLeft.abs() == 1 ? '' : 's'}. '
             'Contacta a Parlando para renovarlo.';
       } else if (daysLeft == 0) {
         title = '🔴 ¡Tu contrato vence hoy!';
-        body = 'Tu contrato finaliza hoy. Comunícate con Parlando para renovar.';
+        body =
+            'Tu contrato finaliza hoy. Comunícate con Parlando para renovar.';
       } else if (daysLeft <= 7) {
         title = '🔴 ¡Contrato por vencer!';
         body = 'Tu contrato vence en $daysLeft día${daysLeft == 1 ? '' : 's'}. '
@@ -118,10 +127,12 @@ class NotificationService {
             'Te recomendamos planificar tu renovación.';
       } else if (daysLeft <= 60) {
         title = '📋 Recordatorio de contrato';
-        body = 'Quedan $daysLeft días para que finalice tu contrato con Parlando.';
+        body =
+            'Quedan $daysLeft días para que finalice tu contrato con Parlando.';
       } else {
         title = '📋 Estado de tu contrato';
-        body = 'Tu contrato con Parlando está vigente. Quedan $daysLeft días para su finalización.';
+        body =
+            'Tu contrato con Parlando está vigente. Quedan $daysLeft días para su finalización.';
       }
 
       // 4. Mostrar la notificación con sonido personalizado
@@ -131,23 +142,27 @@ class NotificationService {
       await prefs.setInt(
           _keyLastNotificationTime, DateTime.now().millisecondsSinceEpoch);
 
-      print('Debug: Notificación de contrato mostrada. Días restantes: $daysLeft');
+      debugPrint(
+          'Debug: Notificación de contrato mostrada. Días restantes: $daysLeft');
     } catch (e) {
-      print('Error al verificar notificación de contrato: $e');
+      debugPrint('Error al verificar notificación de contrato: $e');
     }
   }
 
   /// Muestra una notificación local con sonido personalizado (notificacion.wav).
   Future<void> _showNotification(String title, String body) async {
     // Canal de Android con sonido personalizado
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
       'contract_reminder_channel', // ID del canal
       'Recordatorio de Contrato', // Nombre visible del canal
-      channelDescription: 'Notificaciones sobre el estado de tu contrato con Parlando',
+      channelDescription:
+          'Notificaciones sobre el estado de tu contrato con Parlando',
       importance: Importance.high,
       priority: Priority.high,
       playSound: true,
-      sound: RawResourceAndroidNotificationSound('notificacion'), // Sin extensión
+      sound:
+          RawResourceAndroidNotificationSound('notificacion'), // Sin extensión
       enableVibration: true,
       icon: '@mipmap/launcher_icon',
     );

@@ -211,7 +211,7 @@ class _AchievementOverlayState extends State<AchievementOverlay>
       await _audioPlayer.setSourceAsset('sound/achievement.wav');
       await _audioPlayer.resume();
     } catch (e) {
-      print('Debug: Error reproduciendo sonido: $e');
+      debugPrint('Debug: Error reproduciendo sonido: $e');
     }
 
     // Fase 1: Fondo aparece

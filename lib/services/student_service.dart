@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 import 'auth_service.dart';
 
 class StudentService {
   // Asumimos que el script PHP está accesible en esta ruta basándonos en la estructura del proyecto web.
   // Esta URL conecta directamente con la API que consulta la base de datos 'parlando_students'.
-  static const String _studentsApiUrl = 'https://parlandolingue.edu.co/assets/php/list_students.php';
+  static const String _studentsApiUrl =
+      'https://parlandolingue.edu.co/assets/php/list_students.php';
 
   static final StudentService _instance = StudentService._internal();
   factory StudentService() => _instance;
@@ -17,8 +19,8 @@ class StudentService {
 
   Future<Map<String, dynamic>?> getStudentProfile() async {
     // Si tenemos datos en caché y son recientes (menos de 5 minutos), los usamos.
-    if (_cachedStudentData != null && 
-        _lastFetchTime != null && 
+    if (_cachedStudentData != null &&
+        _lastFetchTime != null &&
         DateTime.now().difference(_lastFetchTime!).inMinutes < 5) {
       return _cachedStudentData!;
     }
@@ -31,10 +33,12 @@ class StudentService {
       final String currentUsername = user['username'];
 
       // Añadimos un timestamp a la URL para evitar que el navegador/proxy cachee la respuesta
-      final response = await http.get(Uri.parse('$_studentsApiUrl?_t=${DateTime.now().millisecondsSinceEpoch}'));
+      final response = await http.get(Uri.parse(
+          '$_studentsApiUrl?_t=${DateTime.now().millisecondsSinceEpoch}'));
 
       if (response.statusCode != 200) {
-        throw Exception('Fallo al cargar los datos del estudiante desde el servidor');
+        throw Exception(
+            'Fallo al cargar los datos del estudiante desde el servidor');
       }
 
       final data = json.decode(response.body);
@@ -43,10 +47,12 @@ class StudentService {
       }
 
       final List students = data['students'];
-      
+
       // Buscamos al estudiante específico por nombre de usuario (ignorando mayúsculas/minúsculas)
       final student = students.firstWhere(
-        (s) => s['userName']?.toString().toLowerCase() == currentUsername.toLowerCase(),
+        (s) =>
+            s['userName']?.toString().toLowerCase() ==
+            currentUsername.toLowerCase(),
         orElse: () => null,
       );
 
@@ -57,11 +63,10 @@ class StudentService {
         _lastFetchTime = DateTime.now();
         return _cachedStudentData;
       }
-      
-      return null; // El estudiante no fue encontrado en la lista devuelta por el servidor
 
+      return null; // El estudiante no fue encontrado en la lista devuelta por el servidor
     } catch (e) {
-      print('Error obteniendo el perfil del estudiante: $e');
+      debugPrint('Error obteniendo el perfil del estudiante: $e');
       return null;
     }
   }
@@ -72,12 +77,14 @@ class StudentService {
     int totalQuotas = 0;
     int paidQuotas = 0;
     double paidAmount = 0;
-    double totalAmount = double.tryParse(student['totalAmount']?.toString() ?? '0') ?? 0;
+    double totalAmount =
+        double.tryParse(student['totalAmount']?.toString() ?? '0') ?? 0;
     String method = student['paymentMethod'] ?? 'Desconocido';
     bool isFullyPaid = false;
 
     if (method.toLowerCase().contains('contado')) {
-      isFullyPaid = true; // Asumimos que el pago de contado implica totalidad pagada
+      isFullyPaid =
+          true; // Asumimos que el pago de contado implica totalidad pagada
       paidAmount = totalAmount;
     } else {
       // Analizamos el array de cuotas si existe
@@ -86,7 +93,8 @@ class StudentService {
         totalQuotas = quotas.length;
         for (var q in quotas) {
           // Verificamos si la cuota está marcada como pagada (puede venir como bool, string 'true', o int 1)
-          bool isPaid = q['paid'] == true || q['paid'] == 'true' || q['paid'] == 1;
+          bool isPaid =
+              q['paid'] == true || q['paid'] == 'true' || q['paid'] == 1;
           if (isPaid) {
             paidQuotas++;
             paidAmount += double.tryParse(q['amount']?.toString() ?? '0') ?? 0;

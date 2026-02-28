@@ -63,7 +63,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           });
         }
       } catch (e) {
-        print("Error cargando detalles del estudiante: $e");
+        debugPrint("Error cargando detalles del estudiante: $e");
         // Si falla, al menos mostramos los datos básicos de autenticación
       }
       setState(() => _isLoading = false);
@@ -107,7 +107,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             }
           }
         } catch (e) {
-          print('Debug: Error sync badges en perfil: $e');
+          debugPrint('Debug: Error sync badges en perfil: $e');
         }
       }
 
@@ -129,7 +129,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() => _lastBadgePerLevel = perLevel);
       }
     } catch (e) {
-      print('Debug: Error cargando insignias: $e');
+      debugPrint('Debug: Error cargando insignias: $e');
     }
   }
 

@@ -2,15 +2,18 @@ import 'dart:convert';
 import 'dart:io' as io;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 
 class AuthService {
   // URLs principales del sistema
   static const String _moodleBaseUrl = 'https://campus.parlandolingue.com';
   static const String _tokenUrl = '$_moodleBaseUrl/login/token.php';
   static const String _restUrl = '$_moodleBaseUrl/webservice/rest/server.php';
-  
+
   // Token de Administrador (para consultas privilegiadas)
-  static const String _adminToken = '95d1b208404ee73b87e212b4409a48ab';
+  // IMPORTANTE: Este token se pasa al compilar con --dart-define=ADMIN_TOKEN=tu_token
+  // Ejemplo: flutter run --dart-define=ADMIN_TOKEN=95d1b208404ee73b87e212b4409a48ab
+  static const String _adminToken = String.fromEnvironment('ADMIN_TOKEN');
 
   // Implementación del patrón Singleton para una única instancia del servicio
   static final AuthService _instance = AuthService._internal();
@@ -26,7 +29,7 @@ class AuthService {
   String get moodleBaseUrl => _moodleBaseUrl;
 
   // ── INICIO DE SESIÓN ────────────────────────────────────────────────
-  
+
   // Realiza el proceso de login completo: Obtiene token, detalles del usuario y cookie de sesión web.
   Future<Map<String, dynamic>> login(String username, String password) async {
     try {
@@ -36,7 +39,7 @@ class AuthService {
         body: {
           'username': username,
           'password': password,
-          'service': 'moodle_mobile_app', 
+          'service': 'moodle_mobile_app',
         },
       );
 
@@ -45,7 +48,7 @@ class AuthService {
       }
 
       final tokenData = json.decode(tokenResponse.body);
-      
+
       if (tokenData['error'] != null || tokenData['token'] == null) {
         throw Exception(tokenData['error'] ?? 'Credenciales inválidas');
       }
@@ -65,7 +68,7 @@ class AuthService {
       );
 
       Map<String, dynamic>? moodleUser;
-      
+
       if (detailsResponse.statusCode == 200) {
         final detailsData = json.decode(detailsResponse.body);
         if (detailsData is List && detailsData.isNotEmpty) {
@@ -77,9 +80,7 @@ class AuthService {
       }
 
       // Si no logramos obtener detalles, usamos datos básicos
-      if (moodleUser == null) {
-         moodleUser = {'username': username, 'fullname': username};
-      }
+      moodleUser ??= {'username': username, 'fullname': username};
 
       // Estructuramos los datos del usuario para uso en la app
       final user = {
@@ -94,10 +95,12 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_keyToken, userToken);
       await prefs.setString(_keyUser, json.encode(user));
-      await prefs.setString(_keyCredentials, json.encode({
-        'username': username,
-        'password': password,
-      }));
+      await prefs.setString(
+          _keyCredentials,
+          json.encode({
+            'username': username,
+            'password': password,
+          }));
 
       // 4. Pre-generar cookie de sesión web para uso en WebViews transparentes
       await _refreshWebSession(username, password);
@@ -107,7 +110,6 @@ class AuthService {
         'user': user,
         'token': userToken,
       };
-
     } catch (e) {
       return {
         'success': false,
@@ -126,21 +128,26 @@ class AuthService {
 
     try {
       // Paso 1: GET a la página de login para extraer el logintoken (CSRF) y cookies iniciales
-      final getRequest = await client.getUrl(Uri.parse('$_moodleBaseUrl/login/index.php'));
+      final getRequest =
+          await client.getUrl(Uri.parse('$_moodleBaseUrl/login/index.php'));
       final getResponse = await getRequest.close();
       final getBody = await getResponse.transform(const Utf8Decoder()).join();
 
       // Extraemos el logintoken del formulario HTML
-      final tokenMatch = RegExp(r'name="logintoken"\s+value="([^"]+)"').firstMatch(getBody);
+      final tokenMatch =
+          RegExp(r'name="logintoken"\s+value="([^"]+)"').firstMatch(getBody);
       final loginToken = tokenMatch?.group(1) ?? '';
 
       // Recolectamos las cookies de la respuesta GET
       final getCookies = getResponse.cookies;
 
       // Paso 2: POST con las credenciales + logintoken + cookies previas
-      final postRequest = await client.postUrl(Uri.parse('$_moodleBaseUrl/login/index.php'));
-      postRequest.headers.contentType = io.ContentType('application', 'x-www-form-urlencoded');
-      postRequest.followRedirects = false; // Importante para capturar la cookie en la redirección
+      final postRequest =
+          await client.postUrl(Uri.parse('$_moodleBaseUrl/login/index.php'));
+      postRequest.headers.contentType =
+          io.ContentType('application', 'x-www-form-urlencoded');
+      postRequest.followRedirects =
+          false; // Importante para capturar la cookie en la redirección
 
       // Adjuntamos las cookies obtenidas en el GET
       for (var cookie in getCookies) {
@@ -168,14 +175,14 @@ class AuthService {
       if (sessionCookie != null) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(_keyMoodleSession, sessionCookie);
-        print('Debug: Cookie MoodleSession obtenida exitosamente');
+        debugPrint('Debug: Cookie MoodleSession obtenida exitosamente');
       } else {
-        print('Debug: Cookie MoodleSession NO encontrada en la respuesta');
+        debugPrint('Debug: Cookie MoodleSession NO encontrada en la respuesta');
       }
 
       return sessionCookie;
     } catch (e) {
-      print('Debug: Error de sesión web: $e');
+      debugPrint('Debug: Error de sesión web: $e');
       return null;
     } finally {
       client.close();
@@ -192,7 +199,8 @@ class AuthService {
     // Si no hay sesión, intentamos refrescarla usando las credenciales guardadas
     final creds = await getCredentials();
     if (creds != null) {
-      session = await _refreshWebSession(creds['username']!, creds['password']!);
+      session =
+          await _refreshWebSession(creds['username']!, creds['password']!);
     }
     return session;
   }
@@ -211,7 +219,8 @@ class AuthService {
   // Obtiene información básica del usuario a través de webservice_get_site_info
   Future<Map<String, dynamic>?> _fetchUserSiteInfo(String token) async {
     try {
-      final response = await http.get(Uri.parse('$_restUrl?wstoken=$token&wsfunction=core_webservice_get_site_info&moodlewsrestformat=json'));
+      final response = await http.get(Uri.parse(
+          '$_restUrl?wstoken=$token&wsfunction=core_webservice_get_site_info&moodlewsrestformat=json'));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['userid'] != null) {

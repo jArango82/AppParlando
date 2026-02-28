@@ -45,5 +45,11 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Parlando necesita acceso a la cámara para que puedas tomar tu foto de perfil.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Parlando necesita acceso a tu galería para que puedas elegir tu foto de perfil.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Parlando necesita acceso al micrófono para las actividades de pronunciación.</string>
 </dict>
 </plist>

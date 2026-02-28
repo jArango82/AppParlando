@@ -202,25 +202,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  String _getFormattedDate() {
-    final now = DateTime.now();
-    final months = [
-      'Ene',
-      'Feb',
-      'Mar',
-      'Abr',
-      'May',
-      'Jun',
-      'Jul',
-      'Ago',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dic'
-    ];
-    return '${months[now.month - 1]} ${now.day}';
-  }
-
   // ── CONTINUAR APRENDIENDO ──────────────────────────────────
 
   Widget _buildContinueLearning(Map<String, dynamic> data) {
@@ -230,11 +211,13 @@ class _HomePageState extends State<HomePage> {
     // Extraer nivel
     String level = 'A1';
     final combined = '${course['fullname'] ?? ''} ${course['shortname'] ?? ''}';
-    if (combined.contains('A2'))
+    if (combined.contains('A2')) {
       level = 'A2';
-    else if (combined.contains('B1'))
+    } else if (combined.contains('B1')) {
       level = 'B1';
-    else if (combined.contains('B2')) level = 'B2';
+    } else if (combined.contains('B2')) {
+      level = 'B2';
+    }
 
     // Calcular progreso
     int totalModules = 0, completedModules = 0;
@@ -262,11 +245,13 @@ class _HomePageState extends State<HomePage> {
 
     // Colores por nivel
     Color accentColor = const Color(0xFF2A60E4);
-    if (level == 'A2')
+    if (level == 'A2') {
       accentColor = const Color(0xFF1FAB5E);
-    else if (level == 'B1')
+    } else if (level == 'B1') {
       accentColor = const Color(0xFFE67E22);
-    else if (level == 'B2') accentColor = const Color(0xFF8E44AD);
+    } else if (level == 'B2') {
+      accentColor = const Color(0xFF8E44AD);
+    }
 
     return GestureDetector(
       onTap: () {

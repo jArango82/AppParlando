@@ -1,4 +1,4 @@
-package com.example.app_parlando
+package com.parlandolingue.app
 
 import io.flutter.embedding.android.FlutterActivity
 

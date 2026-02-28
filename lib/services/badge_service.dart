@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 import 'course_service.dart';
 import '../config/course_config.dart';
 
@@ -29,7 +30,7 @@ class BadgeService {
   //                  Para A1: 0=Introductorio(NO), 1=Parte 1, 2=Parte 2, 3=Parte 3, 4=Parte 4
   // diagnosticSectionNum: número de sección en el curso de diagnóstico (Moodle section number)
   //
-  static final List<BadgeDefinition> allBadges = [
+  static const List<BadgeDefinition> allBadges = [
     // ── A1 ──
     BadgeDefinition(
       id: 'a1_1',
@@ -119,7 +120,7 @@ class BadgeService {
       assetPath: 'assets/badges/A2/6.webp',
       level: 'A2',
       coursePartName: 'A2 Parte 6',
-      diagnosticSectionNum: 9, 
+      diagnosticSectionNum: 9,
       title: '¡Nivel A2 Completado!',
       subtitle: 'A2 - Parte 6',
     ),
@@ -253,7 +254,6 @@ class BadgeService {
     if (partConfig == null) return false;
 
     final List<int> allowedIds = List<int>.from(partConfig['ids']);
-    final int totalExpected = partConfig['totalExercises'];
 
     int completedCount = 0;
     int exerciseCount = 0;
@@ -400,11 +400,9 @@ class BadgeService {
 
       // Obtener lista de cursos para identificar el nivel
       final courses = await courseService.getCourses();
-      final courseData = courses.firstWhere(
-        (c) => c['id'] == courseId, 
-        orElse: () => null
-      );
-      
+      final courseData =
+          courses.firstWhere((c) => c['id'] == courseId, orElse: () => null);
+
       if (courseData == null) return [];
 
       final String shortname = courseData['shortname'] ?? '';
@@ -420,7 +418,8 @@ class BadgeService {
       final diagnosticSections = results[1]['sections'] as List<dynamic>? ?? [];
 
       // Determinar la configuración usando CourseConfig
-      final coursePartsConfig = CourseConfig.getPartsForCourse(shortname, fullname: fullname);
+      final coursePartsConfig =
+          CourseConfig.getPartsForCourse(shortname, fullname: fullname);
 
       return checkForNewBadges(
         courseSections: courseSections,
@@ -428,7 +427,7 @@ class BadgeService {
         diagnosticSections: diagnosticSections,
       );
     } catch (e) {
-      print('Debug BadgeService: Error checking badges: $e');
+      debugPrint('Debug BadgeService: Error checking badges: $e');
       return [];
     }
   }

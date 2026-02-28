@@ -1,0 +1,23 @@
+# ──────────────────────────────────────────────────────────
+# Archivo de configuración para la firma de producción (Android)
+# ──────────────────────────────────────────────────────────
+#
+# PASOS PARA GENERAR TU KEYSTORE:
+#
+# 1. Ejecuta el siguiente comando en la terminal:
+#
+#    keytool -genkey -v -keystore ~/parlando-release-key.jks \
+#      -keyalg RSA -keysize 2048 -validity 10000 \
+#      -alias parlando
+#
+# 2. Copia este archivo como 'key.properties' (sin .example):
+#    cp key.properties.example key.properties
+#
+# 3. Rellena los valores con tu información:
+#
+# ──────────────────────────────────────────────────────────
+
+storePassword=TU_CONTRASEÑA_DEL_KEYSTORE
+keyPassword=TU_CONTRASEÑA_DE_LA_LLAVE
+keyAlias=parlando
+storeFile=/ruta/a/tu/parlando-release-key.jks

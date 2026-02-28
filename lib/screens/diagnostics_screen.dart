@@ -25,32 +25,32 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
   // Definición de las categorías de diagnóstico con sus secciones y estilo visual
   // Cada categoría agrupa secciones de Moodle por nivel
   static final List<_DiagnosticCategory> _categories = [
-    _DiagnosticCategory(
+    const _DiagnosticCategory(
       title: 'Nivel A1',
       subtitle: 'Principiante',
       icon: Icons.emoji_events_rounded,
-      gradientColors: [const Color(0xFF2A60E4), const Color(0xFF56CCF2)],
+      gradientColors: [Color(0xFF2A60E4), Color(0xFF56CCF2)],
       sectionIds: [0, 1, 2, 3], // Sección 0 agregada aquí
     ),
-    _DiagnosticCategory(
+    const _DiagnosticCategory(
       title: 'Nivel A2',
       subtitle: 'Elemental',
       icon: Icons.trending_up_rounded,
-      gradientColors: [const Color(0xFF1FAB5E), const Color(0xFF56E89C)],
+      gradientColors: [Color(0xFF1FAB5E), Color(0xFF56E89C)],
       sectionIds: [4, 5, 6, 7, 8, 9],
     ),
-    _DiagnosticCategory(
+    const _DiagnosticCategory(
       title: 'Nivel B1',
       subtitle: 'Intermedio',
       icon: Icons.rocket_launch_rounded,
-      gradientColors: [const Color(0xFFE67E22), const Color(0xFFF7C948)],
+      gradientColors: [Color(0xFFE67E22), Color(0xFFF7C948)],
       sectionIds: [10, 11, 12, 13, 14, 15],
     ),
-    _DiagnosticCategory(
+    const _DiagnosticCategory(
       title: 'Nivel B2',
       subtitle: 'Intermedio Alto',
       icon: Icons.star_rounded,
-      gradientColors: [const Color(0xFF8E44AD), const Color(0xFFC66DD8)],
+      gradientColors: [Color(0xFF8E44AD), Color(0xFFC66DD8)],
       sectionIds: [16, 17, 18, 19, 20, 21],
     ),
   ];
@@ -154,7 +154,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                 color: Colors.red.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.error_outline, size: 40, color: Colors.red),
+              child:
+                  const Icon(Icons.error_outline, size: 40, color: Colors.red),
             ),
             const SizedBox(height: 20),
             const Text(
@@ -383,17 +384,16 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
     final bool isCompleted =
         progress['total']! > 0 && progress['completed'] == progress['total'];
     final bool hasContent = modules.isNotEmpty;
-    final double sectionProgress =
-        progress['total']! > 0 ? progress['completed']! / progress['total']! : 0;
+    final double sectionProgress = progress['total']! > 0
+        ? progress['completed']! / progress['total']!
+        : 0;
 
     // Determinamos el ancho disponible para hacer tarjetas adaptativas
     final screenWidth = MediaQuery.of(context).size.width;
     final tileWidth = (screenWidth - 20 * 2 - 14 * 2 - 10) / 2; // 2 columnas
 
     return GestureDetector(
-      onTap: hasContent
-          ? () => _showSectionDetail(section, category)
-          : null,
+      onTap: hasContent ? () => _showSectionDetail(section, category) : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         width: tileWidth,
@@ -451,9 +451,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: isCompleted
-                          ? Colors.green
-                          : Colors.grey[500],
+                      color: isCompleted ? Colors.green : Colors.grey[500],
                     ),
                   ),
               ],
@@ -499,7 +497,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
       final badgeService = BadgeService();
 
       // Recargar datos de diagnósticos (podrían haber cambiado)
-      final diagData = await courseService.getCourseDetails(_diagnosticCourseId);
+      final diagData =
+          await courseService.getCourseDetails(_diagnosticCourseId);
       final diagnosticSections = diagData['sections'] as List<dynamic>? ?? [];
 
       // Actualizar las secciones locales con los datos frescos
@@ -526,7 +525,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
       final courseSections = courseData['sections'] as List<dynamic>? ?? [];
 
       // Obtener config de partes del curso
-      final partsConfig = CourseConfig.getPartsForCourse(shortname, fullname: fullname);
+      final partsConfig =
+          CourseConfig.getPartsForCourse(shortname, fullname: fullname);
 
       // Verificar badges pendientes
       final newBadges = await badgeService.checkForNewBadges(
@@ -557,6 +557,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
               colors = [const Color(0xFF2A60E4), const Color(0xFF56CCF2)];
           }
 
+          if (!mounted) continue;
           await AchievementOverlay.show(
             context,
             badgeAssetPath: badge.assetPath,
@@ -570,14 +571,13 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
         }
       }
     } catch (e) {
-      print('Debug: Error verificando badges: $e');
+      debugPrint('Debug: Error verificando badges: $e');
     }
   }
 
   void _showSectionDetail(
       Map<String, dynamic> section, _DiagnosticCategory category) {
-    final String sectionName =
-        section['name']?.toString() ?? 'Sección';
+    final String sectionName = section['name']?.toString() ?? 'Sección';
     final modules = section['modules'] as List<dynamic>? ?? [];
 
     showModalBottomSheet(
@@ -616,8 +616,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                                colors: category.gradientColors),
+                            gradient:
+                                LinearGradient(colors: category.gradientColors),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(category.icon,
@@ -686,7 +686,6 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
     final bool isCompleted = module['completionState'] == 1 ||
         module['completionState'] == 2 ||
         (module['grade'] != null && module['grade'] != '-');
-    final String? grade = module['grade'];
 
     IconData icon;
     Color iconBgColor;
@@ -723,9 +722,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: isCompleted
-            ? const Color(0xFFF8FFF8)
-            : const Color(0xFFFAFBFF),
+        color: isCompleted ? const Color(0xFFF8FFF8) : const Color(0xFFFAFBFF),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isCompleted

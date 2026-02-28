@@ -132,7 +132,7 @@ class _MainPageState extends State<MainPage>
                     final double centerX =
                         (currentPos * itemWidth) + (itemWidth / 2);
 
-                    final double topPos = -20;
+                    const double topPos = -20;
 
                     return Positioned(
                       left: centerX - 28,
