@@ -3,6 +3,7 @@ import 'dart:io' as io;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AuthService {
   // URLs principales del sistema
@@ -11,9 +12,8 @@ class AuthService {
   static const String _restUrl = '$_moodleBaseUrl/webservice/rest/server.php';
 
   // Token de Administrador (para consultas privilegiadas)
-  // IMPORTANTE: Este token se pasa al compilar con --dart-define=ADMIN_TOKEN=tu_token
-  // Ejemplo: flutter run --dart-define=ADMIN_TOKEN=95d1b208404ee73b87e212b4409a48ab
-  static const String _adminToken = String.fromEnvironment('ADMIN_TOKEN');
+  // Se carga desde el archivo .env
+  static String get _adminToken => dotenv.env['MOODLE_ADMIN_TOKEN'] ?? '';
 
   // Implementación del patrón Singleton para una única instancia del servicio
   static final AuthService _instance = AuthService._internal();

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'splash_screen.dart';
 import 'services/notification_service.dart';
@@ -6,13 +7,16 @@ import 'services/notification_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Cargar las variables de entorno
+  await dotenv.load(fileName: '.env');
+
   // Inicializar el servicio de notificaciones locales
   await NotificationService().initialize();
 
-  // Inicializar Supabase
+  // Inicializar Supabase con variables de entorno
   await Supabase.initialize(
-    url: 'https://dwrspwwylwjfupzpzmvq.supabase.co',
-    anonKey: 'sb_publishable_DbIk88XbsHAy56q0bOe0JQ_0t8IJOae',
+    url: dotenv.env['SUPABASE_URL']!,
+    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
 
   runApp(const MainApp());
