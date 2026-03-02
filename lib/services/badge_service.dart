@@ -1,7 +1,11 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 import 'course_service.dart';
+import 'auth_service.dart';
 import '../config/course_config.dart';
+import '../repositories/badge_repository.dart';
+import '../repositories/supabase_badge_repository.dart';
 
 /// Servicio centralizado para gestionar las insignias (badges) del estudiante.
 ///
@@ -16,6 +20,17 @@ class BadgeService {
   factory BadgeService() => _instance;
   BadgeService._internal();
 
+  /// Repositorio para sincronizar insignias con Supabase.
+  final BadgeRepository _badgeRepository = SupabaseBadgeRepository();
+
+  /// Obtiene el moodle_id del usuario autenticado.
+  /// Retorna null si no hay sesión activa.
+  Future<String?> _getMoodleUserId() async {
+    final userData = await AuthService().getUserData();
+    final moodleId = userData?['moodle_id'];
+    return moodleId?.toString();
+  }
+
   static const String _keyEarnedBadges = 'earned_badges';
   static const String _keyShownBadges = 'shown_badges';
 
@@ -29,7 +44,7 @@ class BadgeService {
   //                  Para A1: 0=Introductorio(NO), 1=Parte 1, 2=Parte 2, 3=Parte 3, 4=Parte 4
   // diagnosticSectionNum: número de sección en el curso de diagnóstico (Moodle section number)
   //
-  static final List<BadgeDefinition> allBadges = [
+  static const List<BadgeDefinition> allBadges = [
     // ── A1 ──
     BadgeDefinition(
       id: 'a1_1',
@@ -119,7 +134,7 @@ class BadgeService {
       assetPath: 'assets/badges/A2/6.webp',
       level: 'A2',
       coursePartName: 'A2 Parte 6',
-      diagnosticSectionNum: 9, 
+      diagnosticSectionNum: 9,
       title: '¡Nivel A2 Completado!',
       subtitle: 'A2 - Parte 6',
     ),
@@ -253,7 +268,6 @@ class BadgeService {
     if (partConfig == null) return false;
 
     final List<int> allowedIds = List<int>.from(partConfig['ids']);
-    final int totalExpected = partConfig['totalExercises'];
 
     int completedCount = 0;
     int exerciseCount = 0;
@@ -309,20 +323,63 @@ class BadgeService {
   // ── Persistencia ──────────────────────────────────────────────────
 
   /// Obtiene la lista de IDs de badges ya ganados.
+  ///
+  /// Combina las insignias guardadas localmente (SharedPreferences) con las
+  /// almacenadas en Supabase, garantizando que ambas fuentes estén sincronizadas.
   Future<Set<String>> getEarnedBadgeIds() async {
+    // 1. Leer insignias locales
     final prefs = await SharedPreferences.getInstance();
     final stored = prefs.getString(_keyEarnedBadges);
-    if (stored == null) return {};
-    final List<dynamic> list = json.decode(stored);
-    return list.cast<String>().toSet();
+    final Set<String> localBadges = stored != null
+        ? (json.decode(stored) as List<dynamic>).cast<String>().toSet()
+        : {};
+
+    // 2. Intentar leer insignias remotas de Supabase
+    try {
+      final moodleUserId = await _getMoodleUserId();
+      if (moodleUserId != null) {
+        final remoteBadges = await _badgeRepository.getBadges(moodleUserId);
+        // Combinar ambas fuentes
+        localBadges.addAll(remoteBadges);
+        // Actualizar local con la unión completa
+        await prefs.setString(
+            _keyEarnedBadges, json.encode(localBadges.toList()));
+      }
+    } catch (e) {
+      debugPrint('BadgeService.getEarnedBadgeIds: Error sincronizando con '
+          'Supabase, usando solo datos locales: $e');
+    }
+
+    return localBadges;
   }
 
   /// Marca un badge como ganado.
+  ///
+  /// Guarda la insignia tanto localmente (SharedPreferences) como en
+  /// Supabase a través del repositorio remoto.
   Future<void> markBadgeEarned(String badgeId) async {
+    // 1. Guardar localmente
     final earned = await getEarnedBadgeIds();
     earned.add(badgeId);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyEarnedBadges, json.encode(earned.toList()));
+
+    // 2. Sincronizar con Supabase
+    try {
+      final moodleUserId = await _getMoodleUserId();
+      if (moodleUserId != null) {
+        await _badgeRepository.addBadge(moodleUserId, badgeId);
+        debugPrint('BadgeService.markBadgeEarned: Insignia "$badgeId" '
+            'sincronizada con Supabase para usuario $moodleUserId.');
+      } else {
+        debugPrint('BadgeService.markBadgeEarned: No se pudo obtener '
+            'moodle_id. Insignia guardada solo localmente.');
+      }
+    } catch (e) {
+      debugPrint('BadgeService.markBadgeEarned: Error al sincronizar '
+          'insignia "$badgeId" con Supabase: $e');
+      // No lanzamos excepción — la insignia ya se guardó localmente.
+    }
   }
 
   /// Obtiene la lista de IDs de badges cuya animación ya fue mostrada.
@@ -428,7 +485,7 @@ class BadgeService {
         diagnosticSections: diagnosticSections,
       );
     } catch (e) {
-      print('Debug BadgeService: Error checking badges: $e');
+      debugPrint('Debug BadgeService: Error checking badges: $e');
       return [];
     }
   }

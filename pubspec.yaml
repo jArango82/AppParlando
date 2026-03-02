@@ -42,6 +42,8 @@ dependencies:
   intl: ^0.19.0
   flutter_local_notifications: ^18.0.1
   audioplayers: ^6.5.1
+  supabase_flutter: ^2.8.0
+  flutter_dotenv: ^5.1.0
 
 
 dev_dependencies:
@@ -78,6 +80,7 @@ flutter:
     - assets/B2.webp
     - assets/Loading_Frames/
     - assets/sound/
+    - .env
     - assets/badges/A1/
     - assets/badges/A2/
     - assets/badges/B1/
