@@ -169,8 +169,10 @@ class _HomeScreenState extends State<HomeScreen>
                         // Campo de Usuario
                         TextField(
                           controller: _usernameController,
+                          style: const TextStyle(color: Colors.black),
                           decoration: InputDecoration(
                             labelText: "Usuario",
+                            labelStyle: const TextStyle(color: Colors.black54),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -189,8 +191,10 @@ class _HomeScreenState extends State<HomeScreen>
                         TextField(
                           controller: _passwordController,
                           obscureText: true,
+                          style: const TextStyle(color: Colors.black),
                           decoration: InputDecoration(
                             labelText: "Contraseña",
+                            labelStyle: const TextStyle(color: Colors.black54),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),

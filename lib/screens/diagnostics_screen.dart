@@ -5,6 +5,7 @@ import '../config/course_config.dart';
 import '../widgets/custom_loading_indicator.dart';
 import '../widgets/achievement_overlay.dart';
 import 'exercise_webview_screen.dart';
+import '../theme_provider.dart';
 
 class DiagnosticsScreen extends StatefulWidget {
   const DiagnosticsScreen({super.key});
@@ -21,6 +22,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
   bool _isLoading = true;
   bool _hasError = false;
   String _errorMessage = '';
+  int _selectedCategoryIndex = 0;
 
   // Definición de las categorías de diagnóstico con sus secciones y estilo visual
   // Cada categoría agrupa secciones de Moodle por nivel
@@ -116,27 +118,126 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: context.bgScaffold,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Diagnósticos',
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+          style: TextStyle(
+              color: context.textColor,
+              fontWeight: FontWeight.w800,
+              fontSize: 20),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: context.cardColor,
         elevation: 0,
         centerTitle: false,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.blue),
-            onPressed: _loadDiagnostics,
-          ),
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            decoration: BoxDecoration(
+              color: context.bgScaffold,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.refresh, color: Color(0xFF2A60E4)),
+              onPressed: _loadDiagnostics,
+              tooltip: 'Actualizar',
+            ),
+          )
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CustomLoadingIndicator(size: 80))
-          : _hasError
-              ? _buildErrorState()
-              : _buildContent(),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Selector de Niveles (Diagnósticos) ──
+          if (!_isLoading && !_hasError && _categories.isNotEmpty)
+            Container(color: context.cardColor, child: _buildCategoryChips()),
+          // ── Cuerpo ──
+          Expanded(child: _buildBody()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Center(child: CustomLoadingIndicator(size: 80));
+    }
+    if (_hasError) {
+      return _buildErrorState();
+    }
+    return _buildDashboard();
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  //  CATEGORY CHIPS (Niveles)
+  // ══════════════════════════════════════════════════════════════════
+
+  Widget _buildCategoryChips() {
+    return Container(
+      height: 60,
+      padding: const EdgeInsets.only(top: 8, bottom: 12),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        physics: const BouncingScrollPhysics(),
+        itemCount: _categories.length,
+        itemBuilder: (context, index) {
+          final category = _categories[index];
+          final isSelected = index == _selectedCategoryIndex;
+          final gradient = category.gradientColors;
+
+          return GestureDetector(
+            onTap: () {
+              if (_selectedCategoryIndex == index) return;
+              setState(() => _selectedCategoryIndex = index);
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOutCubic,
+              margin: const EdgeInsets.only(right: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: isSelected ? context.bgScaffold : Colors.transparent,
+                borderRadius: BorderRadius.circular(20), // Aspecto de píldora
+                border: Border.all(
+                  color: isSelected ? gradient[0] : context.borderColor,
+                  width: isSelected ? 1.5 : 1.0,
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                            color: gradient[0].withOpacity(0.15),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3))
+                      ]
+                    : [],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isSelected) ...[
+                    Icon(
+                      category.icon,
+                      color: gradient[0],
+                      size: 18,
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                  Text(
+                    category.title, // Ej: "Nivel A1"
+                    style: TextStyle(
+                      color: isSelected ? gradient[0] : Colors.grey[500],
+                      fontWeight:
+                          isSelected ? FontWeight.w700 : FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -189,30 +290,10 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
     );
   }
 
-  Widget _buildContent() {
-    return CustomScrollView(
-      physics: const BouncingScrollPhysics(),
-      slivers: [
-        // Espaciado superior inicial para separar del AppBar
-        const SliverPadding(padding: EdgeInsets.only(top: 16)),
+  Widget _buildDashboard() {
+    final category = _categories[_selectedCategoryIndex];
+    final gradient = category.gradientColors;
 
-        // Lista de categorías
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                return _buildCategoryCard(_categories[index], index);
-              },
-              childCount: _categories.length,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCategoryCard(_DiagnosticCategory category, int categoryIndex) {
     // Obtenemos las secciones reales de esta categoría
     final List<Map<String, dynamic>> categoryRealSections = [];
     for (var id in category.sectionIds) {
@@ -230,153 +311,173 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
       totalModules += progress['total']!;
       completedModules += progress['completed']!;
     }
-    final double categoryProgress =
-        totalModules > 0 ? completedModules / totalModules : 0;
 
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: Duration(milliseconds: 400 + (categoryIndex * 120)),
-      curve: Curves.easeOutCubic,
-      builder: (context, value, child) {
-        return Transform.translate(
-          offset: Offset(0, 30 * (1 - value)),
-          child: Opacity(opacity: value, child: child),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: category.gradientColors[0].withOpacity(0.08),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
+    return RefreshIndicator(
+      onRefresh: _loadDiagnostics,
+      color: gradient[0],
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics()),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header de la categoría con gradiente
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: category.gradientColors,
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              child: Row(
-                children: [
-                  // Icono de la categoría
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(category.icon, color: Colors.white, size: 26),
-                  ),
-                  const SizedBox(width: 14),
-                  // Título y subtítulo
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          category.title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          category.subtitle,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Badge de progreso
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '${(categoryProgress * 100).toInt()}%',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            // Resumen de módulos completados
+            _buildSummaryCard(
+              title: category.title,
+              value: '$completedModules',
+              suffix: ' / $totalModules',
+              icon: category.icon,
+              iconColor: gradient[0],
+              subtitle: category.subtitle,
+              subtitleColor: Colors.grey[500]!,
+              progress:
+                  totalModules > 0 ? completedModules / totalModules : 0.0,
+              gradient: gradient,
             ),
+            const SizedBox(height: 28),
 
-            // Barra de progreso general
-            Container(
-              height: 4,
-              width: double.infinity,
-              color: Colors.grey.withOpacity(0.1),
-              child: FractionallySizedBox(
-                alignment: Alignment.centerLeft,
-                widthFactor: categoryProgress,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: category.gradientColors),
-                  ),
-                ),
+            // Título de Secciones
+            Text(
+              'Módulos de Diagnóstico',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: context.textColor,
               ),
             ),
+            const SizedBox(height: 16),
 
-            // Grid de secciones
-            Padding(
-              padding: const EdgeInsets.all(14),
-              child: categoryRealSections.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      child: Text(
-                        'No hay secciones disponibles',
-                        style: TextStyle(color: Colors.grey[400], fontSize: 14),
-                      ),
-                    )
-                  : Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: categoryRealSections.map((section) {
-                        return _buildSectionTile(section, category);
-                      }).toList(),
-                    ),
-            ),
+            // Lista de Secciones
+            if (categoryRealSections.isEmpty)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Text('No hay diagnósticos disponibles.',
+                      style: TextStyle(color: Colors.grey[400])),
+                ),
+              )
+            else
+              Column(
+                children: categoryRealSections.map((section) {
+                  return _buildSectionCard(section, category, context);
+                }).toList(),
+              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSectionTile(
-      Map<String, dynamic> section, _DiagnosticCategory category) {
+  Widget _buildSummaryCard({
+    required String title,
+    required String value,
+    String? suffix,
+    required IconData icon,
+    required Color iconColor,
+    required String subtitle,
+    required Color subtitleColor,
+    double? progress,
+    List<Color>? gradient,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: context.cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: context.borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: context.shadowColor,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: iconColor, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: subtitleColor,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w800,
+                  color: context.textColor,
+                ),
+              ),
+              if (suffix != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6, left: 4),
+                  child: Text(
+                    suffix,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[400],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          if (progress != null && gradient != null) ...[
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progress,
+                backgroundColor:
+                    context.isDarkMode ? Colors.grey[800] : Colors.grey[100],
+                valueColor: AlwaysStoppedAnimation<Color>(gradient[0]),
+                minHeight: 6,
+              ),
+            ),
+          ]
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionCard(Map<String, dynamic> section,
+      _DiagnosticCategory category, BuildContext context) {
     final String sectionName =
         section['name']?.toString() ?? 'Sección ${section['section']}';
     final modules = section['modules'] as List<dynamic>? ?? [];
@@ -388,48 +489,63 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
         ? progress['completed']! / progress['total']!
         : 0;
 
-    // Determinamos el ancho disponible para hacer tarjetas adaptativas
-    final screenWidth = MediaQuery.of(context).size.width;
-    final tileWidth = (screenWidth - 20 * 2 - 14 * 2 - 10) / 2; // 2 columnas
+    Color bgColor;
+    Color textColor;
+
+    if (isCompleted) {
+      bgColor = context.isDarkMode
+          ? const Color(0xFF0F3628)
+          : const Color(0xFFECFDF5);
+      textColor = context.isDarkMode
+          ? const Color(0xFF34D399)
+          : const Color(0xFF10B981);
+    } else if (hasContent && sectionProgress > 0) {
+      bgColor = context.isDarkMode
+          ? const Color(0xFF3B2A18)
+          : const Color(0xFFFFF7ED);
+      textColor = context.isDarkMode
+          ? const Color(0xFFFDE68A)
+          : const Color(0xFFE67E22);
+    } else {
+      bgColor = context.cardColor;
+      textColor = context.textColor;
+    }
 
     return GestureDetector(
       onTap: hasContent ? () => _showSectionDetail(section, category) : null,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: tileWidth,
-        padding: const EdgeInsets.all(14),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isCompleted
-              ? const Color(0xFFF0FFF4)
-              : hasContent
-                  ? const Color(0xFFF8F9FF)
-                  : Colors.grey.withOpacity(0.05),
+          color: bgColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isCompleted
-                ? Colors.green.withOpacity(0.3)
-                : hasContent
-                    ? category.gradientColors[0].withOpacity(0.15)
-                    : Colors.grey.withOpacity(0.1),
-            width: 1.5,
-          ),
+              color: isCompleted
+                  ? textColor.withOpacity(0.3)
+                  : context.borderColor),
+          boxShadow: [
+            if (!isCompleted)
+              BoxShadow(
+                color: context.shadowColor,
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              )
+          ],
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Icono de estado + actividades
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Icono de estado
                 Container(
-                  width: 34,
-                  height: 34,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     color: isCompleted
-                        ? Colors.green.withOpacity(0.15)
-                        : category.gradientColors[0].withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
+                        ? textColor.withOpacity(0.15)
+                        : hasContent
+                            ? category.gradientColors[0].withOpacity(0.1)
+                            : Colors.grey.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     isCompleted
@@ -438,51 +554,76 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                             ? Icons.quiz_rounded
                             : Icons.lock_outline_rounded,
                     color: isCompleted
-                        ? Colors.green
+                        ? textColor
                         : hasContent
                             ? category.gradientColors[0]
                             : Colors.grey[400],
-                    size: 18,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        sectionName,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: hasContent ? textColor : Colors.grey[400],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${progress['completed']} / ${progress['total']} actividades',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isCompleted ? textColor : Colors.grey[500],
+                          fontWeight:
+                              isCompleted ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 if (hasContent)
-                  Text(
-                    '${progress['completed']}/${progress['total']}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: isCompleted ? Colors.green : Colors.grey[500],
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isCompleted
+                          ? textColor.withOpacity(0.2)
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: isCompleted
+                          ? null
+                          : Border.all(color: Colors.grey.withOpacity(0.15)),
+                    ),
+                    child: Text(
+                      '${(sectionProgress * 100).toInt()}%',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color:
+                            isCompleted ? textColor : const Color(0xFF1A1D26),
+                      ),
                     ),
                   ),
               ],
             ),
-            const SizedBox(height: 10),
-            // Nombre de la sección
-            Text(
-              sectionName,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: hasContent ? const Color(0xFF1A1D2E) : Colors.grey[400],
-              ),
-            ),
-            const SizedBox(height: 8),
-            // Barra de mini-progreso
-            if (hasContent) ...[
+            if (hasContent && !isCompleted && sectionProgress > 0) ...[
+              const SizedBox(height: 16),
               ClipRRect(
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
                   value: sectionProgress,
-                  backgroundColor: Colors.grey.withOpacity(0.1),
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    isCompleted ? Colors.green : category.gradientColors[0],
-                  ),
+                  backgroundColor: textColor.withOpacity(0.1),
+                  valueColor: AlwaysStoppedAnimation<Color>(textColor),
                   minHeight: 4,
                 ),
               ),
-            ],
+            ]
           ],
         ),
       ),
@@ -591,9 +732,10 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
           minChildSize: 0.4,
           builder: (context, scrollController) {
             return Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              decoration: BoxDecoration(
+                color: context.cardColor,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: Column(
                 children: [
@@ -603,7 +745,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey[300],
+                      color: context.subtitleColor.withOpacity(0.3),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -630,10 +772,10 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                             children: [
                               Text(
                                 sectionName,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 17,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF1A1D2E),
+                                  color: context.textColor,
                                 ),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
@@ -653,7 +795,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                       ],
                     ),
                   ),
-                  Divider(color: Colors.grey[100], height: 1),
+                  Divider(color: context.borderColor, height: 1),
                   // Lista de módulos/actividades
                   Expanded(
                     child: ListView.builder(
@@ -693,8 +835,10 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
 
     if (isCompleted) {
       icon = Icons.check_circle_rounded;
-      iconBgColor = Colors.green.withOpacity(0.1);
-      iconColor = Colors.green;
+      iconBgColor = context.isDarkMode
+          ? const Color(0xFF0F3628)
+          : Colors.green.withOpacity(0.1);
+      iconColor = context.isDarkMode ? const Color(0xFF34D399) : Colors.green;
     } else {
       switch (modname) {
         case 'quiz':
@@ -709,8 +853,12 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
           break;
         case 'assign':
           icon = Icons.assignment_rounded;
-          iconBgColor = const Color(0xFFF3E5F5);
-          iconColor = const Color(0xFF8E44AD);
+          iconBgColor = context.isDarkMode
+              ? const Color(0xFF38164A)
+              : const Color(0xFFF3E5F5);
+          iconColor = context.isDarkMode
+              ? const Color(0xFFD8B4E2)
+              : const Color(0xFF8E44AD);
           break;
         default:
           icon = Icons.play_circle_rounded;
@@ -722,12 +870,20 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: isCompleted ? const Color(0xFFF8FFF8) : const Color(0xFFFAFBFF),
+        color: isCompleted
+            ? (context.isDarkMode
+                ? Colors.green.withOpacity(0.05)
+                : const Color(0xFFF8FFF8))
+            : (context.isDarkMode
+                ? Colors.transparent
+                : const Color(0xFFFAFBFF)),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isCompleted
-              ? Colors.green.withOpacity(0.15)
-              : Colors.grey.withOpacity(0.08),
+              ? (context.isDarkMode
+                  ? Colors.green.withOpacity(0.15)
+                  : Colors.green.withOpacity(0.15))
+              : context.borderColor,
         ),
       ),
       child: Material(
@@ -775,8 +931,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: isCompleted
-                              ? Colors.black45
-                              : const Color(0xFF1A1D2E),
+                              ? context.subtitleColor.withOpacity(0.6)
+                              : context.textColor,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,

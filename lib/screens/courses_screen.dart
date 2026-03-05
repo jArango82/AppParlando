@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/course_service.dart';
 import 'course_details_screen.dart';
 import '../widgets/custom_loading_indicator.dart';
+import '../theme_provider.dart';
 
 class CoursesScreen extends StatefulWidget {
   const CoursesScreen({super.key});
@@ -12,6 +13,7 @@ class CoursesScreen extends StatefulWidget {
 
 class _CoursesScreenState extends State<CoursesScreen> {
   Future<List<dynamic>>? _coursesFuture;
+  final Map<int, Future<Map<String, dynamic>>> _courseProgressFutures = {};
 
   @override
   void initState() {
@@ -21,27 +23,48 @@ class _CoursesScreenState extends State<CoursesScreen> {
 
   void _loadCourses() {
     setState(() {
-      _coursesFuture = CourseService().getCourses();
+      _courseProgressFutures.clear();
+      _coursesFuture = CourseService().getCourses().then((courses) {
+        for (var c in courses) {
+          if (c['id'] != 9 && c['id'] != 10) {
+            _courseProgressFutures[c['id']] =
+                CourseService().getCourseDetails(c['id']);
+          }
+        }
+        return courses;
+      });
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA), // Fondo gris claro
+      backgroundColor: context.bgScaffold, // Fondo gris claro moderno / oscuro
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Mis Cursos',
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: context.textColor,
+            fontWeight: FontWeight.w800,
+            fontSize: 20,
+          ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: context.cardColor,
         elevation: 0,
         centerTitle: false,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.blue),
-            onPressed: _loadCourses,
-          ),
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            decoration: BoxDecoration(
+              color: context.bgScaffold,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.refresh, color: Color(0xFF2A60E4)),
+              onPressed: _loadCourses,
+              tooltip: 'Actualizar',
+            ),
+          )
         ],
       ),
       body: FutureBuilder<List<dynamic>>(
@@ -98,7 +121,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
             itemCount: courses.length,
             itemBuilder: (context, index) {
               final course = courses[index];
-              return _buildCourseCard(course);
+              return _buildCourseCard(course, context);
             },
           );
         },
@@ -106,7 +129,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
     );
   }
 
-  Widget _buildCourseCard(dynamic course) {
+  Widget _buildCourseCard(dynamic course, BuildContext context) {
     final String fullname = course['fullname'] ?? 'Curso Desconocido';
     final String rawShortname = course['shortname'] ?? '';
     final int courseId = course['id'];
@@ -138,15 +161,16 @@ class _CoursesScreenState extends State<CoursesScreen> {
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: context.cardColor,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: context.borderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: context.shadowColor,
+            blurRadius: 15,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
@@ -155,7 +179,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
         children: [
           // Banner con imagen del curso
           ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             child: Stack(
               children: [
                 // Imagen de fondo (correspondiente al nivel)
@@ -190,27 +214,28 @@ class _CoursesScreenState extends State<CoursesScreen> {
                 // Etiqueta de Nivel + Título sobre la imagen
                 Positioned(
                   left: 16,
-                  top: 12,
+                  top: 16,
                   child: Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: accentColor,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(10),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
+                          color: accentColor.withOpacity(0.4),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
                     child: Text(
-                      displayLevel,
+                      'NIVEL $displayLevel',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 11,
+                        letterSpacing: 0.5,
                       ),
                     ),
                   ),
@@ -218,20 +243,20 @@ class _CoursesScreenState extends State<CoursesScreen> {
                 Positioned(
                   left: 16,
                   right: 16,
-                  bottom: 12,
+                  bottom: 16,
                   child: Text(
                     fullname,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
                       color: Colors.white,
                       shadows: [
                         Shadow(
-                            color: Colors.black54,
-                            blurRadius: 6,
-                            offset: Offset(0, 1)),
+                            color: Colors.black45,
+                            blurRadius: 8,
+                            offset: Offset(0, 2)),
                       ],
                     ),
                   ),
@@ -248,7 +273,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
               children: [
                 if (true) ...[
                   FutureBuilder<Map<String, dynamic>>(
-                    future: CourseService().getCourseDetails(courseId),
+                    future: _courseProgressFutures[courseId],
                     builder: (context, detailSnap) {
                       if (detailSnap.connectionState ==
                           ConnectionState.waiting) {
@@ -257,7 +282,9 @@ class _CoursesScreenState extends State<CoursesScreen> {
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(4),
                             child: LinearProgressIndicator(
-                              backgroundColor: Colors.grey[200],
+                              backgroundColor: context.isDarkMode
+                                  ? Colors.grey[800]
+                                  : Colors.grey[200],
                               valueColor:
                                   AlwaysStoppedAnimation<Color>(accentColor),
                               minHeight: 8,
@@ -297,32 +324,35 @@ class _CoursesScreenState extends State<CoursesScreen> {
                               Text(
                                 'Progreso',
                                 style: TextStyle(
-                                  color: Colors.grey[600],
+                                  color: context.subtitleColor,
                                   fontSize: 14,
-                                  fontWeight: FontWeight.w500,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                               Text(
                                 '${progress.toStringAsFixed(0)}%',
                                 style: TextStyle(
                                   color: accentColor,
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 10),
                           ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(6),
                             child: LinearProgressIndicator(
                               value: (progress / 100).clamp(0.0, 1.0),
-                              backgroundColor: Colors.grey[200],
+                              backgroundColor: context.isDarkMode
+                                  ? Colors.grey[800]
+                                  : Colors.grey.withOpacity(0.15),
                               valueColor:
                                   AlwaysStoppedAnimation<Color>(accentColor),
                               minHeight: 8,
                             ),
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 24),
                         ],
                       );
                     },
@@ -343,13 +373,19 @@ class _CoursesScreenState extends State<CoursesScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: accentColor,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       elevation: 0,
                     ),
-                    child: const Text('Continuar Aprendiendo'),
+                    child: const Text(
+                      'Continuar Aprendiendo',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
               ],

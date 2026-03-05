@@ -5,6 +5,7 @@ import 'screens/diagnostics_screen.dart';
 import 'screens/grades_screen.dart';
 import 'screens/profile_screen.dart';
 import 'services/notification_service.dart';
+import 'theme_provider.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -76,9 +77,14 @@ class _MainPageState extends State<MainPage>
     final double bottomPadding = MediaQuery.of(context).padding.bottom;
     final double itemWidth = size.width / _icons.length;
 
+    final isDark = context.isDarkMode;
+    final barColor = isDark ? context.cardColor : Colors.blue;
+    final activeBtnColor = isDark ? Colors.blue : Colors.white;
+    final activeIconColor = isDark ? Colors.white : Colors.blue;
+    final inactiveIconColor = isDark ? Colors.grey[500] : Colors.white;
+
     return Scaffold(
-      backgroundColor:
-          const Color(0xFFF5F7FA), // Fondo Gris muy claro (Estilo Dashboard)
+      backgroundColor: context.bgScaffold, // Fondo dinámico
 
       body: Stack(
         children: [
@@ -118,7 +124,7 @@ class _MainPageState extends State<MainPage>
                       painter: SlidingNavBarPainter(
                         position: _positionAnimation.value,
                         itemCount: _icons.length,
-                        color: Colors.blue, // <--- LA BARRA ES AZUL
+                        color: barColor, // <--- LA BARRA ADAPTA SU COLOR
                       ),
                     );
                   },
@@ -141,12 +147,13 @@ class _MainPageState extends State<MainPage>
                         width: 56,
                         height: 56,
                         decoration: BoxDecoration(
-                          color: Colors.white, // <--- BOTÓN BLANCO
+                          color: activeBtnColor, // <--- BOTÓN ADAPTA SU COLOR
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.blue
-                                  .withOpacity(0.3), // Sombra azulada
+                              color: isDark
+                                  ? Colors.black.withOpacity(0.5)
+                                  : Colors.blue.withOpacity(0.3), // Sombra
                               blurRadius: 10,
                               offset: const Offset(0, 5),
                             ),
@@ -164,7 +171,8 @@ class _MainPageState extends State<MainPage>
                                 ? Icons.person
                                 : _icons[_selectedIndex],
                             key: ValueKey<int>(_selectedIndex),
-                            color: Colors.blue, // <--- ICONO ACTIVO AZUL
+                            color:
+                                activeIconColor, // <--- ICONO ACTIVO ADAPTA SU COLOR
                             size: 28,
                           ),
                         ),
@@ -200,8 +208,8 @@ class _MainPageState extends State<MainPage>
                                 opacity: opacity,
                                 child: Icon(
                                   _icons[index],
-                                  // Iconos inactivos totalmente blancos
-                                  color: Colors.white,
+                                  // Iconos inactivos dinámicos
+                                  color: inactiveIconColor,
                                   size: 26,
                                 ),
                               );

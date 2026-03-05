@@ -5,6 +5,7 @@ import '../config/course_config.dart';
 import '../widgets/achievement_overlay.dart';
 import 'exercise_webview_screen.dart';
 import '../widgets/custom_loading_indicator.dart';
+import '../theme_provider.dart';
 
 class CourseDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> course;
@@ -164,19 +165,22 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FB),
+      backgroundColor: context.bgScaffold,
       appBar: AppBar(
         title: Text(
           widget.course['fullname'] ?? 'Curso',
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+          style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 17,
+              color: context.textColor),
         ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        backgroundColor: context.cardColor,
+        foregroundColor: context.textColor,
         elevation: 0,
         centerTitle: false,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(color: Colors.grey[100], height: 1),
+          child: Container(color: context.borderColor, height: 1),
         ),
       ),
       body: FutureBuilder<Map<String, dynamic>>(
@@ -195,13 +199,15 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                     const SizedBox(height: 16),
                     Text('Error cargando detalles: ${snapshot.error}',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey[600])),
+                        style: TextStyle(color: context.subtitleColor)),
                   ],
                 ),
               ),
             );
           } else if (!snapshot.hasData) {
-            return const Center(child: Text('No hay contenido disponible'));
+            return Center(
+                child: Text('No hay contenido disponible',
+                    style: TextStyle(color: context.subtitleColor)));
           }
 
           final sections = snapshot.data!['sections'] as List<dynamic>;
@@ -431,19 +437,19 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isExpanded
               ? _accentColor.withOpacity(0.3)
               : allDone
                   ? Colors.green.withOpacity(0.25)
-                  : Colors.grey.withOpacity(0.12),
+                  : context.borderColor,
           width: isExpanded ? 1.5 : 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isExpanded ? 0.06 : 0.02),
+            color: context.shadowColor,
             blurRadius: isExpanded ? 12 : 6,
             offset: const Offset(0, 3),
           ),
@@ -501,7 +507,9 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
-                              color: allDone ? Colors.black45 : Colors.black87,
+                              color: allDone
+                                  ? context.subtitleColor
+                                  : context.textColor,
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -518,7 +526,9 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                                     value: validModules.isNotEmpty
                                         ? topicCompleted / validModules.length
                                         : 0,
-                                    backgroundColor: Colors.grey[200],
+                                    backgroundColor: context.isDarkMode
+                                        ? Colors.grey[800]
+                                        : Colors.grey[200],
                                     valueColor: AlwaysStoppedAnimation<Color>(
                                       allDone ? Colors.green : _accentColor,
                                     ),
@@ -546,7 +556,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                       duration: const Duration(milliseconds: 200),
                       child: Icon(
                         Icons.keyboard_arrow_down_rounded,
-                        color: Colors.grey[400],
+                        color: context.subtitleColor,
                         size: 24,
                       ),
                     ),
@@ -567,7 +577,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                       children: [
                         Container(
                           height: 1,
-                          color: Colors.grey.withOpacity(0.1),
+                          color: context.borderColor,
                           margin: const EdgeInsets.only(bottom: 10),
                         ),
                         ...modules.map((m) => _buildExerciseItem(m)),
@@ -653,7 +663,8 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: isCompleted ? Colors.black38 : Colors.black87,
+                    color:
+                        isCompleted ? context.subtitleColor : context.textColor,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -680,10 +691,10 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
       child: Container(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color: context.shadowColor,
                 blurRadius: 8,
                 offset: const Offset(0, -4)),
           ],

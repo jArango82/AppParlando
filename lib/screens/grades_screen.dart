@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../services/course_service.dart';
 import '../config/course_config.dart';
 import '../widgets/custom_loading_indicator.dart';
+import '../theme_provider.dart';
 
 class GradesScreen extends StatefulWidget {
   const GradesScreen({super.key});
@@ -21,9 +23,6 @@ class _GradesScreenState extends State<GradesScreen> {
   // Datos del curso seleccionado
   Map<String, dynamic>? _courseDetails;
   bool _isLoadingDetails = false;
-
-  // Partes expandidas (índice de la parte)
-  int? _expandedPartIndex;
 
   // Gradientes por nivel
   static const Map<String, List<Color>> _levelGradients = {
@@ -49,15 +48,12 @@ class _GradesScreenState extends State<GradesScreen> {
       final courses = await CourseService().getCourses();
 
       // Filtrar: solo cursos de nivel (A1, A2, B1, B2), sin exámenes ni diagnósticos
-      final filtered = courses
-          .cast<Map<String, dynamic>>()
-          .where((c) {
-            final name = (c['fullname'] ?? '').toString().toLowerCase();
-            return !name.contains('examen') &&
-                !name.contains('diagnóstico') &&
-                !name.contains('diagnostico');
-          })
-          .toList();
+      final filtered = courses.cast<Map<String, dynamic>>().where((c) {
+        final name = (c['fullname'] ?? '').toString().toLowerCase();
+        return !name.contains('examen') &&
+            !name.contains('diagnóstico') &&
+            !name.contains('diagnostico');
+      }).toList();
 
       // Ordenar por nivel
       filtered.sort((a, b) {
@@ -96,7 +92,6 @@ class _GradesScreenState extends State<GradesScreen> {
   Future<void> _loadCourseDetails(int courseId) async {
     setState(() {
       _isLoadingDetails = true;
-      _expandedPartIndex = null;
     });
 
     try {
@@ -138,20 +133,31 @@ class _GradesScreenState extends State<GradesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FB),
+      backgroundColor: context.bgScaffold,
       appBar: AppBar(
-        title: const Text(
-          'Mis Notas',
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+        title: Text(
+          'Rendimiento Académico',
+          style: TextStyle(
+              color: context.textColor,
+              fontWeight: FontWeight.w800,
+              fontSize: 20),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: context.cardColor,
         elevation: 0,
         centerTitle: false,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.blue),
-            onPressed: _loadCourses,
-          ),
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            decoration: BoxDecoration(
+              color: context.bgScaffold,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.refresh, color: Color(0xFF2A60E4)),
+              onPressed: _loadCourses,
+              tooltip: 'Actualizar',
+            ),
+          )
         ],
       ),
       body: Column(
@@ -159,7 +165,7 @@ class _GradesScreenState extends State<GradesScreen> {
         children: [
           // ── Selector de Cursos ──
           if (!_isLoading && _error == null && _courses.isNotEmpty)
-            _buildCourseChips(),
+            Container(color: context.cardColor, child: _buildCourseChips()),
           // ── Cuerpo ──
           Expanded(child: _buildBody()),
         ],
@@ -173,8 +179,8 @@ class _GradesScreenState extends State<GradesScreen> {
 
   Widget _buildCourseChips() {
     return Container(
-      height: 52,
-      margin: const EdgeInsets.only(top: 12),
+      height: 60,
+      padding: const EdgeInsets.only(top: 8, bottom: 12),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -195,28 +201,45 @@ class _GradesScreenState extends State<GradesScreen> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeOutCubic,
-              margin: const EdgeInsets.only(right: 10),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              margin: const EdgeInsets.only(right: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                gradient: isSelected
-                    ? LinearGradient(colors: gradient, begin: Alignment.topLeft, end: Alignment.bottomRight)
-                    : null,
-                color: isSelected ? null : Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: isSelected ? null : Border.all(color: Colors.grey.withOpacity(0.15)),
-                boxShadow: isSelected
-                    ? [BoxShadow(color: gradient[0].withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))]
-                    : [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 4, offset: const Offset(0, 2))],
-              ),
-              child: Center(
-                child: Text(
-                  level,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.grey[700],
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
+                color: isSelected ? context.bgScaffold : Colors.transparent,
+                borderRadius: BorderRadius.circular(20), // Aspecto de píldora
+                border: Border.all(
+                  color: isSelected ? gradient[0] : context.borderColor,
+                  width: isSelected ? 1.5 : 1.0,
                 ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                            color: gradient[0].withOpacity(0.15),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3))
+                      ]
+                    : [],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isSelected) ...[
+                    Icon(
+                      Icons.school_rounded,
+                      color: gradient[0],
+                      size: 18,
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                  Text(
+                    'Nivel $level',
+                    style: TextStyle(
+                      color: isSelected ? gradient[0] : Colors.grey[500],
+                      fontWeight:
+                          isSelected ? FontWeight.w700 : FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
               ),
             ),
           );
@@ -243,7 +266,9 @@ class _GradesScreenState extends State<GradesScreen> {
             children: [
               Icon(Icons.error_outline, size: 56, color: Colors.red[300]),
               const SizedBox(height: 16),
-              Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[600])),
+              Text(_error!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey[600])),
               const SizedBox(height: 20),
               ElevatedButton.icon(
                 onPressed: _loadCourses,
@@ -252,7 +277,8 @@ class _GradesScreenState extends State<GradesScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2A60E4),
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
               ),
             ],
@@ -268,7 +294,8 @@ class _GradesScreenState extends State<GradesScreen> {
           children: [
             Icon(Icons.school_outlined, size: 64, color: Colors.grey[300]),
             const SizedBox(height: 16),
-            Text('No hay cursos disponibles', style: TextStyle(color: Colors.grey[500], fontSize: 16)),
+            Text('No hay cursos disponibles',
+                style: TextStyle(color: Colors.grey[500], fontSize: 16)),
           ],
         ),
       );
@@ -280,406 +307,986 @@ class _GradesScreenState extends State<GradesScreen> {
 
     if (_courseDetails == null) {
       return Center(
-        child: Text('Selecciona un curso', style: TextStyle(color: Colors.grey[400])),
+        child: Text('Selecciona un curso',
+            style: TextStyle(color: Colors.grey[400])),
       );
     }
 
-    return _buildPartsAccordion();
+    return _buildDashboard();
   }
 
   // ══════════════════════════════════════════════════════════════════
-  //  PARTS ACCORDION
+  //  DASHBOARD (NEW UI)
   // ══════════════════════════════════════════════════════════════════
 
-  Widget _buildPartsAccordion() {
+  Widget _buildDashboard() {
     final course = _courses[_selectedCourseIndex];
-    final shortname = course['shortname'] ?? '';
     final fullname = course['fullname'] ?? '';
+    final shortname = course['shortname'] ?? '';
     final level = _detectLevel(fullname);
     final gradient = _getGradient(level);
 
-    final partsConfig = CourseConfig.getPartsForCourse(shortname, fullname: fullname);
+    final partsConfig =
+        CourseConfig.getPartsForCourse(shortname, fullname: fullname);
+
+    // Calcular estadísticas globales
+    int totalExercises = 0;
+    int completedExercises = 0;
+    int gradedCount = 0;
+    double gradeSum = 0;
+    List<Map<String, dynamic>> allGradedModules = [];
+    Map<String, List<double>> gradesByPart = {};
+
     final sections = _courseDetails!['sections'] as List<dynamic>? ?? [];
 
-    if (partsConfig.isEmpty) {
-      return Center(
-        child: Text('Sin configuración de partes', style: TextStyle(color: Colors.grey[400])),
-      );
-    }
+    for (var s in sections) {
+      final sNum = int.tryParse(s['section'].toString()) ?? -1;
+      String? partName;
+      for (var entry in partsConfig.entries) {
+        final allowedIds = List<int>.from(entry.value['ids']);
+        if (allowedIds.contains(sNum)) {
+          partName = entry.key;
+          break;
+        }
+      }
 
-    final partEntries = partsConfig.entries.toList();
-
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-      physics: const BouncingScrollPhysics(),
-      itemCount: partEntries.length,
-      itemBuilder: (context, partIndex) {
-        final partName = partEntries[partIndex].key;
-        final config = partEntries[partIndex].value;
-        final allowedIds = List<int>.from(config['ids']);
-        final isExpanded = _expandedPartIndex == partIndex;
-
-        // Filtrar secciones de esta parte
-        final partSections = sections.where((s) {
-          final sNum = int.tryParse(s['section'].toString());
-          return sNum != null && allowedIds.contains(sNum);
-        }).toList();
-
-        // Calcular stats (solo ejercicios)
-        int totalExercises = 0;
-        int completedExercises = 0;
-        int gradedCount = 0;
-        double gradeSum = 0;
-
-        for (var s in partSections) {
-          final modules = s['modules'] as List<dynamic>? ?? [];
-          for (var m in modules) {
-            final name = m['name']?.toString().toLowerCase() ?? '';
-            if (!name.contains('ejercicio')) continue;
-
-            totalExercises++;
-            if (m['completionState'] == 1 || m['completionState'] == 2) {
-              completedExercises++;
-            }
-            if (m['grade'] != null && m['grade'] != '-') {
-              final raw = _cleanHtml(m['grade'].toString())
-                  .replaceAll(',', '.')
-                  .replaceAll(RegExp(r'[^0-9.]'), ''); // quitar %, espacios, etc.
-              final gradeVal = double.tryParse(raw);
-              if (gradeVal != null) {
-                gradedCount++;
-                gradeSum += gradeVal;
+      final modules = s['modules'] as List<dynamic>? ?? [];
+      for (var m in modules) {
+        final name = m['name']?.toString().toLowerCase() ?? '';
+        if (name.contains('ejercicio')) {
+          totalExercises++;
+          if (m['completionState'] == 1 || m['completionState'] == 2) {
+            completedExercises++;
+          }
+          if (m['grade'] != null && m['grade'] != '-') {
+            final raw = _cleanHtml(m['grade'].toString())
+                .replaceAll(',', '.')
+                .replaceAll(RegExp(r'[^0-9.]'), '');
+            final gradeVal = double.tryParse(raw);
+            if (gradeVal != null) {
+              gradedCount++;
+              gradeSum += gradeVal;
+              allGradedModules.add({
+                'name': m['name'],
+                'grade': gradeVal,
+                'gradeStr': _cleanHtml(m['grade'].toString()),
+              });
+              if (partName != null) {
+                gradesByPart[partName] ??= [];
+                gradesByPart[partName]!.add(gradeVal);
               }
             }
           }
         }
+      }
+    }
 
-        final double progress = totalExercises > 0
-            ? (completedExercises / totalExercises).clamp(0.0, 1.0)
-            : 0.0;
+    final String avgGrade = gradedCount > 0
+        ? (gradeSum / gradedCount).toStringAsFixed(0) // Sin decimales
+        : '0';
 
-        final String avgGrade = gradedCount > 0
-            ? (gradeSum / gradedCount).toStringAsFixed(1)
-            : '—';
+    List<Map<String, dynamic>> partsAverages = [];
+    for (var entry in partsConfig.entries) {
+      final grades = gradesByPart[entry.key] ?? [];
+      if (grades.isNotEmpty) {
+        final avg = grades.reduce((a, b) => a + b) / grades.length;
+        String shortPartName = entry.key;
+        if (shortPartName.toLowerCase().contains('parte')) {
+          try {
+            shortPartName =
+                'P${shortPartName.substring(shortPartName.toLowerCase().indexOf('parte') + 5).trim()}';
+          } catch (_) {
+            // Ignorar y usar el nombre original
+          }
+        } else if (shortPartName.toLowerCase().contains('intro')) {
+          shortPartName = 'Intro';
+        }
+        partsAverages.add({
+          'name': shortPartName,
+          'grade': avg,
+        });
+      }
+    }
 
-        return _buildPartCard(
-          partIndex: partIndex,
-          partName: partName,
-          isExpanded: isExpanded,
-          gradient: gradient,
-          level: level,
-          progress: progress,
-          completed: completedExercises,
-          total: totalExercises,
-          avgGrade: avgGrade,
-          partSections: partSections,
-        );
-      },
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Tarjetas de Resumen
+          Row(
+            children: [
+              Expanded(
+                child: _buildSummaryCard(
+                  title: 'Nota Promedio',
+                  value: '$avgGrade%',
+                  icon: Icons.auto_graph_rounded,
+                  iconColor: const Color(0xFF2A60E4),
+                  subtitle: 'Del curso actual',
+                  subtitleColor: Colors.grey[500]!,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildSummaryCard(
+                  title: 'Unidades Listas',
+                  value: '$completedExercises',
+                  suffix: ' / $totalExercises',
+                  icon: Icons.school_rounded,
+                  iconColor: const Color(0xFF8E44AD),
+                  progress: totalExercises > 0
+                      ? completedExercises / totalExercises
+                      : 0.0,
+                  gradient: gradient,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Gráfico de Tendencia
+          _buildProgressTrendCard(level, gradient, partsAverages),
+          const SizedBox(height: 28),
+
+          // Título de Evaluaciones Recientes
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Evaluaciones Recientes',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: context.textColor,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => _showAllGradesSheet(context, gradient),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                  child: Text(
+                    'Ver Todo',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: gradient[0],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Evaluaciones List
+          allGradedModules.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32.0),
+                    child: Text('Aún no tienes notas recientes.',
+                        style: TextStyle(color: Colors.grey[400])),
+                  ),
+                )
+              : Column(
+                  children: allGradedModules.reversed.take(10).map((m) {
+                    return _buildRecentAssessmentCard(m);
+                  }).toList(),
+                ),
+          const SizedBox(height: 32),
+        ],
+      ),
     );
   }
 
-  // ══════════════════════════════════════════════════════════════════
-  //  PART CARD (ACCORDION)
-  // ══════════════════════════════════════════════════════════════════
-
-  Widget _buildPartCard({
-    required int partIndex,
-    required String partName,
-    required bool isExpanded,
-    required List<Color> gradient,
-    required String level,
-    required double progress,
-    required int completed,
-    required int total,
-    required String avgGrade,
-    required List<dynamic> partSections,
+  Widget _buildSummaryCard({
+    required String title,
+    required String value,
+    String? suffix,
+    required IconData icon,
+    required Color iconColor,
+    String? subtitle,
+    Color? subtitleColor,
+    double? progress,
+    List<Color>? gradient,
   }) {
-    final bool isDone = total > 0 && completed >= total;
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      margin: const EdgeInsets.only(bottom: 12),
+    return Container(
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: isExpanded
-              ? gradient[0].withOpacity(0.35)
-              : isDone
-                  ? Colors.green.withOpacity(0.2)
-                  : Colors.grey.withOpacity(0.1),
-          width: isExpanded ? 1.5 : 1,
-        ),
+        color: context.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.borderColor),
         boxShadow: [
           BoxShadow(
-            color: isExpanded
-                ? gradient[0].withOpacity(0.08)
-                : Colors.black.withOpacity(0.03),
-            blurRadius: isExpanded ? 16 : 6,
+            color: context.shadowColor,
+            blurRadius: 10,
             offset: const Offset(0, 4),
-          ),
+          )
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header (tap to expand) ──
-          Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(18),
-            child: InkWell(
-              onTap: () {
-                setState(() {
-                  _expandedPartIndex = isExpanded ? null : partIndex;
-                });
-              },
-              borderRadius: BorderRadius.circular(18),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        // Icono de estado
-                        Container(
-                          width: 42,
-                          height: 42,
-                          decoration: BoxDecoration(
-                            gradient: isDone
-                                ? const LinearGradient(colors: [Color(0xFF10B981), Color(0xFF34D399)])
-                                : LinearGradient(colors: [gradient[0].withOpacity(0.15), gradient[1].withOpacity(0.1)]),
-                            borderRadius: BorderRadius.circular(13),
-                          ),
-                          child: Center(
-                            child: isDone
-                                ? const Icon(Icons.check_rounded, color: Colors.white, size: 22)
-                                : Text(
-                                    '${partIndex + 1}',
-                                    style: TextStyle(
-                                      color: gradient[0],
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        // Nombre + stats
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                partName,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 15,
-                                  color: Color(0xFF1A1D26),
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  _buildMiniStat(Icons.task_alt_rounded, '$completed/$total', Colors.grey[600]!),
-                                  const SizedBox(width: 14),
-                                  _buildMiniStat(Icons.star_rounded, avgGrade, const Color(0xFFE67E22)),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Porcentaje
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: isDone
-                                ? const Color(0xFFECFDF5)
-                                : gradient[0].withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '${(progress * 100).toInt()}%',
-                            style: TextStyle(
-                              color: isDone ? const Color(0xFF10B981) : gradient[0],
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        AnimatedRotation(
-                          turns: isExpanded ? 0.5 : 0,
-                          duration: const Duration(milliseconds: 200),
-                          child: Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey[400], size: 22),
-                        ),
-                      ],
+          Row(
+            children: [
+              Icon(icon, size: 16, color: iconColor.withOpacity(0.7)),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: context.subtitleColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: context.textColor,
+                ),
+              ),
+              if (suffix != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4, left: 4),
+                  child: Text(
+                    suffix,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: context.subtitleColor,
                     ),
-                    // Barra de progreso
-                    const SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        backgroundColor: Colors.grey[100],
-                        valueColor: AlwaysStoppedAnimation<Color>(isDone ? const Color(0xFF10B981) : gradient[0]),
-                        minHeight: 5,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          if (subtitle != null)
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+                color: subtitleColor,
+              ),
+            ),
+          if (progress != null && gradient != null) ...[
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progress,
+                backgroundColor:
+                    context.isDarkMode ? Colors.grey[800] : Colors.grey[100],
+                valueColor: AlwaysStoppedAnimation<Color>(gradient[0]),
+                minHeight: 6,
+              ),
+            ),
+          ]
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgressTrendCard(String level, List<Color> gradient,
+      List<Map<String, dynamic>> gradedModules) {
+    if (gradedModules.length < 2) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: context.cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: context.borderColor),
+        ),
+        child: Column(
+          children: [
+            Icon(Icons.show_chart_rounded, size: 48, color: Colors.grey[300]),
+            const SizedBox(height: 8),
+            Text(
+              'No hay suficientes datos',
+              style: TextStyle(
+                  color: Colors.grey[500], fontWeight: FontWeight.w500),
+            ),
+            Text(
+              'Completa más ejercicios para ver tu tendencia',
+              style: TextStyle(color: Colors.grey[400], fontSize: 12),
+            )
+          ],
+        ),
+      );
+    }
+
+    // Preparar puntos (tomamos los últimos 15 para no saturar)
+    final recentModules = gradedModules.length > 15
+        ? gradedModules.sublist(gradedModules.length - 15)
+        : gradedModules;
+
+    List<FlSpot> spots = [];
+    for (int i = 0; i < recentModules.length; i++) {
+      spots.add(FlSpot(i.toDouble(), recentModules[i]['grade'] as double));
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: context.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: context.shadowColor,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Tendencia de Progreso',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1A1D26),
+                    ),
+                  ),
+                  Text(
+                    'Mejora de tu calificación en el curso',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: gradient[0].withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'NIVEL $level',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: gradient[0],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            height: 180,
+            child: LineChart(
+              LineChartData(
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipColor: (touchedSpot) => Colors.white,
+                    tooltipRoundedRadius: 8,
+                    getTooltipItems: (touchedSpots) {
+                      return touchedSpots.map((spot) {
+                        // Limpia el número si acaba en .0
+                        String val = spot.y.toString();
+                        if (val.endsWith('.0')) {
+                          val = val.substring(0, val.length - 2);
+                        }
+                        return LineTooltipItem(
+                          val,
+                          TextStyle(
+                            color: gradient[0],
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        );
+                      }).toList();
+                    },
+                  ),
+                ),
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: 25,
+                  getDrawingHorizontalLine: (value) {
+                    return FlLine(
+                      color: Colors.grey.withOpacity(0.1),
+                      strokeWidth: 1,
+                      dashArray: [5, 5],
+                    );
+                  },
+                ),
+                titlesData: FlTitlesData(
+                  show: true,
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 30,
+                      interval: 1,
+                      getTitlesWidget: (value, meta) {
+                        final index = value.toInt();
+                        if (index < 0 || index >= recentModules.length) {
+                          return const SizedBox.shrink();
+                        }
+                        return SideTitleWidget(
+                          axisSide: meta.axisSide,
+                          child: Text(
+                            recentModules[index]['name'].toString(),
+                            style: TextStyle(
+                                color: Colors.grey[400],
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      interval: 25,
+                      getTitlesWidget: (value, meta) {
+                        return Text(
+                          value.toInt().toString(),
+                          style:
+                              TextStyle(color: Colors.grey[400], fontSize: 10),
+                          textAlign: TextAlign.right,
+                        );
+                      },
+                      reservedSize: 28,
+                    ),
+                  ),
+                ),
+                borderData: FlBorderData(show: false),
+                minX: 0,
+                maxX: spots.length.toDouble() - 1,
+                minY: 0,
+                maxY: 105,
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: spots,
+                    isCurved: true,
+                    color: gradient[0],
+                    barWidth: 3,
+                    isStrokeCapRound: true,
+                    dotData: FlDotData(
+                      show: true,
+                      getDotPainter: (spot, percent, barData, index) {
+                        return FlDotCirclePainter(
+                          radius: 4,
+                          color: Colors.white,
+                          strokeWidth: 2,
+                          strokeColor: gradient[0],
+                        );
+                      },
+                    ),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      gradient: LinearGradient(
+                        colors: [
+                          gradient[0].withOpacity(0.3),
+                          gradient[0].withOpacity(0.0),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentAssessmentCard(Map<String, dynamic> module) {
+    final double gradeVal = module['grade'] ?? 0.0;
+    final String gradeStr = module['gradeStr'] ?? '';
+    final String name = module['name'] ?? 'Ejercicio';
+
+    // Reglas de color solicitadas:
+    // 80% y 100% -> verde
+    // 50 a 80 -> naranja
+    // 0 a 50 -> rojo
+    Color bgColor;
+    Color textColor;
+
+    if (gradeVal >= 80) {
+      bgColor = context.isDarkMode
+          ? const Color(0xFF0F3628)
+          : const Color(0xFFD1FAE5);
+      textColor = context.isDarkMode
+          ? const Color(0xFF34D399)
+          : const Color(0xFF059669);
+    } else if (gradeVal >= 50) {
+      bgColor = context.isDarkMode
+          ? const Color(0xFF3B2A18)
+          : const Color(0xFFFFEDD5);
+      textColor = context.isDarkMode
+          ? const Color(0xFFFDE68A)
+          : const Color(0xFFEA580C);
+    } else {
+      bgColor = context.isDarkMode
+          ? const Color(0xFF450A0A)
+          : const Color(0xFFFEE2E2);
+      textColor = context.isDarkMode
+          ? const Color(0xFFF87171)
+          : const Color(0xFFDC2626);
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: context.shadowColor,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: context.textColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Evaluación reciente', // No tenemos fecha real de Moodle, ponemos texto genérico
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: context.subtitleColor,
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: bgColor,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '$gradeStr/100',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                ),
+              ),
+            ],
           ),
-
-          // ── Expanded Content ──
-          AnimatedSize(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            child: isExpanded
-                ? _buildExpandedContent(partSections, gradient)
-                : const SizedBox.shrink(),
-          ),
+          // Aquí podríamos añadir "Teacher Feedback" si lo tuviéramos de la API
+          // Por ahora replicamos el diseño vacío o con un dummy si se desea, pero
+          // dado que no hay data real, es mejor dejar el diseño limpio.
         ],
       ),
     );
   }
 
-  Widget _buildMiniStat(IconData icon, String text, Color color) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 14, color: color),
-        const SizedBox(width: 4),
-        Text(text, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500)),
-      ],
+  // ══════════════════════════════════════════════════════════════════
+  //  MODAL BOTTOM SHEET (Ver Todo)
+  // ══════════════════════════════════════════════════════════════════
+
+  void _showAllGradesSheet(BuildContext context, List<Color> gradient) {
+    if (_courseDetails == null) return;
+
+    final course = _courses[_selectedCourseIndex];
+    final shortname = course['shortname'] ?? '';
+    final fullname = course['fullname'] ?? '';
+
+    // Obtener la configuración de partes del curso (IDs de las secciones)
+    final partsConfig =
+        CourseConfig.getPartsForCourse(shortname, fullname: fullname);
+    final sections = _courseDetails!['sections'] as List<dynamic>? ?? [];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return _AllGradesSheetWidget(
+          partsConfig: partsConfig,
+          sections: sections,
+          gradient: gradient,
+          buildCardCallback: _buildRecentAssessmentCard,
+          cleanHtmlCallback: _cleanHtml,
+        );
+      },
     );
   }
+}
 
-  // ══════════════════════════════════════════════════════════════════
-  //  EXPANDED CONTENT (Topics + Grades)
-  // ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════
+//  STATEFUL WIDGET FOR BOTTOM SHEET (VER TODO)
+// ══════════════════════════════════════════════════════════════════
 
-  Widget _buildExpandedContent(List<dynamic> partSections, List<Color> gradient) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+class _AllGradesSheetWidget extends StatefulWidget {
+  final Map<String, dynamic> partsConfig;
+  final List<dynamic> sections;
+  final List<Color> gradient;
+  final Widget Function(Map<String, dynamic>) buildCardCallback;
+  final String Function(String) cleanHtmlCallback;
+
+  const _AllGradesSheetWidget({
+    required this.partsConfig,
+    required this.sections,
+    required this.gradient,
+    required this.buildCardCallback,
+    required this.cleanHtmlCallback,
+  });
+
+  @override
+  State<_AllGradesSheetWidget> createState() => _AllGradesSheetWidgetState();
+}
+
+class _AllGradesSheetWidgetState extends State<_AllGradesSheetWidget> {
+  String? _selectedPart;
+  int? _selectedSectionId; // null significa "Todos los temas"
+
+  @override
+  Widget build(BuildContext context) {
+    // 1. Opciones para el filtro "Parte"
+    final List<String> partOptions = [
+      'Todas las partes',
+      ...widget.partsConfig.keys
+    ];
+
+    // 2. Opciones para el filtro "Tema" basadas en la "Parte" seleccionada
+    List<Map<String, dynamic>> topicOptions = [
+      {'id': null, 'name': 'Todos los temas'}
+    ];
+
+    if (_selectedPart != null && _selectedPart != 'Todas las partes') {
+      final allowedIds =
+          List<int>.from(widget.partsConfig[_selectedPart]['ids']);
+      final validSections = widget.sections.where((s) {
+        final sNum = int.tryParse(s['section'].toString());
+        return sNum != null && allowedIds.contains(sNum);
+      });
+
+      for (var s in validSections) {
+        topicOptions.add({
+          'id': int.tryParse(s['section'].toString()),
+          'name': s['name']?.toString() ?? 'Tema',
+        });
+      }
+    }
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.85,
+      decoration: BoxDecoration(
+        color: context.bgScaffold,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       child: Column(
         children: [
-          Container(height: 1, color: Colors.grey.withOpacity(0.08)),
-          const SizedBox(height: 10),
-          ...partSections.map((section) {
-            final sectionName = section['name']?.toString() ?? 'Tema';
-            final modules = section['modules'] as List<dynamic>? ?? [];
-
-            // Filtrar solo ejercicios con nota
-            final gradedExercises = modules.where((m) {
-              final name = m['name']?.toString().toLowerCase() ?? '';
-              return name.contains('ejercicio') &&
-                  (m['grade'] != null && m['grade'] != '-');
-            }).toList();
-
-            if (gradedExercises.isEmpty) return const SizedBox.shrink();
-
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Nombre del tema
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8, top: 4),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 4,
-                          height: 16,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(colors: gradient, begin: Alignment.topCenter, end: Alignment.bottomCenter),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            sectionName,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey[700],
-                              letterSpacing: 0.3,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
+          // ── Agarradera de la hoja y Título ──
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: context.cardColor,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(24)),
+              boxShadow: [
+                BoxShadow(
+                    color: context.shadowColor,
+                    blurRadius: 4,
+                    offset: const Offset(0, 2))
+              ],
+            ),
+            child: Column(
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: context.subtitleColor.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  // Ejercicios con nota
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: gradedExercises.map((m) {
-                      final grade = _cleanHtml(m['grade'].toString());
-                      final gradeNum = double.tryParse(grade.replaceAll(',', '.'));
-                      
-                      Color pillColor;
-                      Color pillBg;
-                      if (gradeNum != null) {
-                        if (gradeNum >= 80) {
-                          pillColor = const Color(0xFF10B981);
-                          pillBg = const Color(0xFFECFDF5);
-                        } else if (gradeNum >= 50) {
-                          pillColor = const Color(0xFFE67E22);
-                          pillBg = const Color(0xFFFFF7ED);
-                        } else {
-                          pillColor = const Color(0xFFEF4444);
-                          pillBg = const Color(0xFFFEF2F2);
-                        }
-                      } else {
-                        pillColor = const Color(0xFF6B7280);
-                        pillBg = const Color(0xFFF3F4F6);
-                      }
-
-                      // Nombre corto del ejercicio
-                      String shortName = m['name']?.toString() ?? 'Ejercicio';
-                      // Extraer número si existe
-                      final numMatch = RegExp(r'(\d+)').firstMatch(shortName);
-                      final label = numMatch != null ? 'Ej. ${numMatch.group(1)}' : 'Ej.';
-
-                      return Tooltip(
-                        message: shortName,
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Todas las Evaluaciones',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: context.textColor,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(context),
+                      color: context.subtitleColor,
+                    ),
+                  ],
+                ),
+                // ── Filtros (Dropdowns) ──
+                if (widget.partsConfig.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      // Filtro Parte
+                      Expanded(
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
                           decoration: BoxDecoration(
-                            color: pillBg,
+                            color: context.bgScaffold,
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: pillColor.withOpacity(0.15)),
+                            border: Border.all(color: context.borderColor),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                label,
-                                style: TextStyle(fontSize: 10, color: Colors.grey[500], fontWeight: FontWeight.w500),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                grade,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: pillColor,
-                                ),
-                              ),
-                            ],
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: _selectedPart ?? 'Todas las partes',
+                              isExpanded: true,
+                              dropdownColor: context.cardColor,
+                              icon: Icon(Icons.keyboard_arrow_down,
+                                  color: widget.gradient[0]),
+                              style: TextStyle(
+                                  color: context.textColor,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600),
+                              onChanged: (String? newValue) {
+                                setState(() {
+                                  _selectedPart = newValue == 'Todas las partes'
+                                      ? null
+                                      : newValue;
+                                  _selectedSectionId =
+                                      null; // Resetear tema al cambiar de parte
+                                });
+                              },
+                              items: partOptions.map<DropdownMenuItem<String>>(
+                                  (String value) {
+                                return DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(value,
+                                      overflow: TextOverflow.ellipsis),
+                                );
+                              }).toList(),
+                            ),
                           ),
                         ),
-                      );
-                    }).toList(),
+                      ),
+                      const SizedBox(width: 12),
+                      // Filtro Tema
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: _selectedPart == null
+                                ? (context.isDarkMode
+                                    ? Colors.grey[900]
+                                    : Colors.grey[100])
+                                : context.bgScaffold,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: context.borderColor),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<int?>(
+                              value: _selectedSectionId,
+                              isExpanded: true,
+                              dropdownColor: context.cardColor,
+                              hint: Text('Temas',
+                                  style: TextStyle(
+                                      fontSize: 13, color: context.textColor)),
+                              icon: Icon(Icons.keyboard_arrow_down,
+                                  color: _selectedPart == null
+                                      ? context.subtitleColor
+                                      : widget.gradient[0]),
+                              style: TextStyle(
+                                  color: _selectedPart == null
+                                      ? context.subtitleColor
+                                      : context.textColor,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600),
+                              disabledHint: const Text('Selecciona Parte',
+                                  style: TextStyle(fontSize: 13)),
+                              onChanged: _selectedPart == null
+                                  ? null
+                                  : (int? newValue) {
+                                      setState(() {
+                                        _selectedSectionId = newValue;
+                                      });
+                                    },
+                              items: _selectedPart == null
+                                  ? []
+                                  : topicOptions.map<DropdownMenuItem<int?>>(
+                                      (Map<String, dynamic> topic) {
+                                      return DropdownMenuItem<int?>(
+                                        value: topic['id'],
+                                        child: Text(topic['name'],
+                                            overflow: TextOverflow.ellipsis),
+                                      );
+                                    }).toList(),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
-              ),
-            );
-          }),
+              ],
+            ),
+          ),
+
+          // ── Contenido de Notas agrupadas por Partes ──
+          Expanded(
+            child: widget.partsConfig.isEmpty
+                ? Center(
+                    child: Text(
+                      'No hay configuración de partes para este curso.',
+                      style: TextStyle(color: context.subtitleColor),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(20),
+                    physics: const BouncingScrollPhysics(),
+                    // Si hay una parte seleccionada, solo creamos un elemento para esa parte, si no, para todas
+                    itemCount:
+                        _selectedPart != null ? 1 : widget.partsConfig.length,
+                    itemBuilder: (context, index) {
+                      // Determinar qué parte renderizar en este índice
+                      final String partName = _selectedPart ??
+                          widget.partsConfig.keys.elementAt(index);
+                      final allowedIds =
+                          List<int>.from(widget.partsConfig[partName]['ids']);
+
+                      // Filtrar secciones (temas) que pertenezcan a esta parte y respetando el filtro de tema (_selectedSectionId)
+                      final partSections = widget.sections.where((s) {
+                        final sNum = int.tryParse(s['section'].toString());
+                        if (sNum == null || !allowedIds.contains(sNum)) {
+                          return false;
+                        }
+                        if (_selectedSectionId != null &&
+                            sNum != _selectedSectionId) {
+                          return false;
+                        }
+                        return true;
+                      }).toList();
+
+                      // Obtener todos los ejercicios calificados de estas secciones
+                      List<Map<String, dynamic>> partExercises = [];
+                      for (var s in partSections) {
+                        final modules = s['modules'] as List<dynamic>? ?? [];
+                        for (var m in modules) {
+                          final name =
+                              m['name']?.toString().toLowerCase() ?? '';
+                          if (name.contains('ejercicio') &&
+                              m['grade'] != null &&
+                              m['grade'] != '-') {
+                            final raw = widget
+                                .cleanHtmlCallback(m['grade'].toString())
+                                .replaceAll(',', '.')
+                                .replaceAll(RegExp(r'[^0-9.]'), '');
+                            final gradeVal = double.tryParse(raw);
+                            if (gradeVal != null) {
+                              partExercises.add({
+                                'name': m['name'],
+                                'grade': gradeVal,
+                                'gradeStr': widget
+                                    .cleanHtmlCallback(m['grade'].toString()),
+                              });
+                            }
+                          }
+                        }
+                      }
+
+                      if (partExercises.isEmpty) {
+                        return const SizedBox
+                            .shrink(); // No mostrar partes vacías
+                      }
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Título de la Parte (con estilo especial) solo si se muestran TODAS las partes o si no hay filtro de tema
+                          if (_selectedPart == null ||
+                              _selectedSectionId == null)
+                            Padding(
+                              padding:
+                                  const EdgeInsets.only(top: 8, bottom: 16),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 4,
+                                    height: 20,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: widget.gradient,
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                      ),
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    partName,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      color: widget.gradient[0],
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          // Lista de ejercicios de esta parte
+                          ...partExercises
+                              .map((m) => widget.buildCardCallback(m)),
+                          const SizedBox(height: 16),
+                        ],
+                      );
+                    },
+                  ),
+          ),
         ],
       ),
     );
