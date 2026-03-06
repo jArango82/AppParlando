@@ -782,7 +782,7 @@ class _GradesScreenState extends State<GradesScreen> {
                 minX: 0,
                 maxX: spots.length.toDouble() - 1,
                 minY: 0,
-                maxY: 105,
+                maxY: 100,
                 lineBarsData: [
                   LineChartBarData(
                     spots: spots,
