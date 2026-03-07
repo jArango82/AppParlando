@@ -10,7 +10,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _formOpacityAnimation;
   Animation<double>? _logoOffsetY; // Animación para mover el logo
@@ -35,7 +36,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _formOpacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: const Interval(0.4, 1.0, curve: Curves.easeIn), 
+        curve: const Interval(0.4, 1.0, curve: Curves.easeIn),
       ),
     );
   }
@@ -47,12 +48,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       // Calculamos la distancia exacta para que el logo empiece en el CENTRO
       final Size screenSize = MediaQuery.of(context).size;
       const double logoHeight = 350.0; // El tamaño del logo
-      const double topSpace = 80.0;    // El SizedBox que pusimos arriba
+      const double topSpace = 80.0; // El SizedBox que pusimos arriba
 
       // Posición final deseada (Y): topSpace (80.0)
       // Posición inicial deseada (Y): Centro de la pantalla
       final double startY = (screenSize.height - logoHeight) / 2;
-      final double endY = topSpace;
+      const double endY = topSpace;
 
       // Cuánto tenemos que bajarlo inicialmente (Offset positivo)
       final double distance = startY - endY;
@@ -60,7 +61,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       _logoOffsetY = Tween<double>(begin: distance, end: 0.0).animate(
         CurvedAnimation(
           parent: _animationController,
-          curve: const Interval(0.0, 0.6, curve: Curves.easeInOut), // Sube primero
+          curve:
+              const Interval(0.0, 0.6, curve: Curves.easeInOut), // Sube primero
         ),
       );
 
@@ -80,7 +82,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     final pass = _passwordController.text;
 
     if (user.isEmpty || pass.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor completa los campos')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Por favor completa los campos')));
       return;
     }
 
@@ -113,7 +116,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 30.0),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.start, 
+              mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 const SizedBox(height: 80), // Espacio superior fijo
 
@@ -128,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   },
                   child: Image.asset(
                     'assets/logo_002.webp',
-                    width: 350, 
+                    width: 350,
                     height: 350,
                   ),
                 ),
@@ -136,68 +139,76 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 // Formulario
                 // Transformamos para ajustar posición
                 Transform.translate(
-                  offset: const Offset(0, -60), 
+                  offset: const Offset(0, -60),
                   child: FadeTransition(
                     opacity: _formOpacityAnimation,
                     child: Column(
                       children: [
                         // Línea divisoria sutil
                         const Divider(
-                          color: Colors.grey, 
-                          thickness: 0.5, 
-                          indent: 60, 
+                          color: Colors.grey,
+                          thickness: 0.5,
+                          indent: 60,
                           endIndent: 60,
                         ),
-                        
-                        const SizedBox(height: 10), 
-                        
+
+                        const SizedBox(height: 10),
+
                         // Texto "Iniciar Sesión"
                         const Text(
                           "Iniciar Sesión",
                           style: TextStyle(
-                            fontSize: 20, 
+                            fontSize: 20,
                             fontWeight: FontWeight.w500,
-                            color: Colors.black, 
+                            color: Colors.black,
                           ),
                         ),
 
                         const SizedBox(height: 20),
-                      
+
                         // Campo de Usuario
                         TextField(
                           controller: _usernameController,
+                          style: const TextStyle(color: Colors.black),
                           decoration: InputDecoration(
                             labelText: "Usuario",
+                            labelStyle: const TextStyle(color: Colors.black54),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            prefixIcon: const Icon(Icons.person, color: Colors.blue),
-                            focusedBorder: OutlineInputBorder( 
+                            prefixIcon:
+                                const Icon(Icons.person, color: Colors.blue),
+                            focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Colors.blue, width: 2),
+                              borderSide: const BorderSide(
+                                  color: Colors.blue, width: 2),
                             ),
                           ),
                         ),
                         const SizedBox(height: 20),
-                        
+
                         // Campo de Contraseña
                         TextField(
                           controller: _passwordController,
                           obscureText: true,
+                          style: const TextStyle(color: Colors.black),
                           decoration: InputDecoration(
                             labelText: "Contraseña",
+                            labelStyle: const TextStyle(color: Colors.black54),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            prefixIcon: const Icon(Icons.lock, color: Colors.blue),
+                            prefixIcon:
+                                const Icon(Icons.lock, color: Colors.blue),
                             focusedBorder: OutlineInputBorder(
-                               borderRadius: BorderRadius.circular(12),
-                               borderSide: const BorderSide(color: Colors.blue, width: 2),
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                  color: Colors.blue, width: 2),
                             ),
                           ),
                         ),
                         const SizedBox(height: 30),
-                        
+
                         // Botón de Login
                         SizedBox(
                           width: double.infinity,
@@ -205,37 +216,36 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             onPressed: _isLoading ? null : _handleLogin,
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 15),
-                              backgroundColor: Colors.blue, 
+                              backgroundColor: Colors.blue,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
                             child: _isLoading
                                 ? const SizedBox(
-                                    height: 30, 
-                                    width: 30, 
+                                    height: 30,
+                                    width: 30,
                                     child: CustomLoadingIndicator(size: 30),
                                   )
                                 : const Text(
                                     "Ingresar",
                                     style: TextStyle(
-                                      fontSize: 18, 
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold
-                                    ),
+                                        fontSize: 18,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold),
                                   ),
                           ),
                         ),
 
                         const SizedBox(height: 20),
-                      
+
                         // Enlace de Olvidé mi contraseña
                         TextButton(
                           onPressed: () {},
                           child: const Text(
                             "Olvidé mi contraseña",
                             style: TextStyle(
-                              color: Colors.blue, 
+                              color: Colors.blue,
                               fontWeight: FontWeight.w600,
                             ),
                           ),

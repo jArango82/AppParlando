@@ -5,6 +5,7 @@ import '../config/course_config.dart';
 import '../widgets/achievement_overlay.dart';
 import 'exercise_webview_screen.dart';
 import '../widgets/custom_loading_indicator.dart';
+import '../theme_provider.dart';
 
 class CourseDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> course;
@@ -20,7 +21,8 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
   Map<String, dynamic> _partsConfig = {};
   List<MapEntry<String, dynamic>> _partsList = [];
   int _currentPartIndex = 0;
-  int? _expandedTopicIndex; // Indica qué tema está expandido actualmente en la lista.
+  int?
+      _expandedTopicIndex; // Indica qué tema está expandido actualmente en la lista.
 
   late Color _accentColor;
 
@@ -67,7 +69,8 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
       // Obtener config de partes
       final shortname = widget.course['shortname'] ?? '';
       final fullname = widget.course['fullname'] ?? '';
-      final partsConfig = CourseConfig.getPartsForCourse(shortname, fullname: fullname);
+      final partsConfig =
+          CourseConfig.getPartsForCourse(shortname, fullname: fullname);
 
       // Verificar badges
       final newBadges = await badgeService.checkForNewBadges(
@@ -80,13 +83,23 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
         for (var badge in newBadges) {
           List<Color> colors;
           switch (badge.level) {
-            case 'A1': colors = [const Color(0xFF2A60E4), const Color(0xFF56CCF2)]; break;
-            case 'A2': colors = [const Color(0xFF1FAB5E), const Color(0xFF56E89C)]; break;
-            case 'B1': colors = [const Color(0xFFE67E22), const Color(0xFFF7C948)]; break;
-            case 'B2': colors = [const Color(0xFF8E44AD), const Color(0xFFC66DD8)]; break;
-            default: colors = [const Color(0xFF2A60E4), const Color(0xFF56CCF2)];
+            case 'A1':
+              colors = [const Color(0xFF2A60E4), const Color(0xFF56CCF2)];
+              break;
+            case 'A2':
+              colors = [const Color(0xFF1FAB5E), const Color(0xFF56E89C)];
+              break;
+            case 'B1':
+              colors = [const Color(0xFFE67E22), const Color(0xFFF7C948)];
+              break;
+            case 'B2':
+              colors = [const Color(0xFF8E44AD), const Color(0xFFC66DD8)];
+              break;
+            default:
+              colors = [const Color(0xFF2A60E4), const Color(0xFF56CCF2)];
           }
 
+          if (!mounted) continue;
           await AchievementOverlay.show(
             context,
             badgeAssetPath: badge.assetPath,
@@ -99,21 +112,25 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
         }
       }
     } catch (e) {
-      print('Debug CourseDetails: Error verificando badges: $e');
+      debugPrint('Debug CourseDetails: Error verificando badges: $e');
     }
   }
 
   void _loadConfig() {
     final shortname = widget.course['shortname'] ?? '';
     final fullname = widget.course['fullname'] ?? '';
-    print('Depuración CourseDetails: shortname="$shortname" fullname="$fullname"');
-    _partsConfig = CourseConfig.getPartsForCourse(shortname, fullname: fullname);
+    debugPrint(
+        'Depuración CourseDetails: shortname="$shortname" fullname="$fullname"');
+    _partsConfig =
+        CourseConfig.getPartsForCourse(shortname, fullname: fullname);
     _partsList = _partsConfig.entries.toList();
-    print('Depuración CourseDetails: Se encontraron ${_partsList.length} partes');
+    debugPrint(
+        'Depuración CourseDetails: Se encontraron ${_partsList.length} partes');
   }
 
   void _resolveAccentColor() {
-    final combined = '${widget.course['fullname'] ?? ''} ${widget.course['shortname'] ?? ''}';
+    final combined =
+        '${widget.course['fullname'] ?? ''} ${widget.course['shortname'] ?? ''}';
     if (combined.contains('A1')) {
       _accentColor = const Color(0xFF2A60E4);
     } else if (combined.contains('A2')) {
@@ -148,19 +165,22 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FB),
+      backgroundColor: context.bgScaffold,
       appBar: AppBar(
         title: Text(
           widget.course['fullname'] ?? 'Curso',
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+          style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 17,
+              color: context.textColor),
         ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        backgroundColor: context.cardColor,
+        foregroundColor: context.textColor,
         elevation: 0,
         centerTitle: false,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(color: Colors.grey[100], height: 1),
+          child: Container(color: context.borderColor, height: 1),
         ),
       ),
       body: FutureBuilder<Map<String, dynamic>>(
@@ -177,14 +197,17 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                   children: [
                     Icon(Icons.error_outline, size: 60, color: Colors.red[300]),
                     const SizedBox(height: 16),
-                    Text('Error cargando detalles: ${snapshot.error}', textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey[600])),
+                    Text('Error cargando detalles: ${snapshot.error}',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: context.subtitleColor)),
                   ],
                 ),
               ),
             );
           } else if (!snapshot.hasData) {
-            return const Center(child: Text('No hay contenido disponible'));
+            return Center(
+                child: Text('No hay contenido disponible',
+                    style: TextStyle(color: context.subtitleColor)));
           }
 
           final sections = snapshot.data!['sections'] as List<dynamic>;
@@ -210,15 +233,15 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
     final partName = currentEntry.key;
     final config = currentEntry.value;
     final List<int> allowedIds = List<int>.from(config['ids']);
-    final int totalExpected = config['totalExercises'];
 
     // Imprimimos todos los IDs de sección para entender los datos que recibimos
     if (_currentPartIndex == 0) {
       for (var s in allSections) {
         final modules = s['modules'] as List<dynamic>? ?? [];
-        print('Depuración Sección: id=${s['id']} section=${s['section']} name="${s['name']}" modules=${modules.length}');
+        debugPrint(
+            'Depuración Sección: id=${s['id']} section=${s['section']} name="${s['name']}" modules=${modules.length}');
       }
-      print('Depuración AllowedIds para "$partName": $allowedIds');
+      debugPrint('Depuración AllowedIds para "$partName": $allowedIds');
     }
 
     // Filtramos por número de 'section' (concepto lógico de orden),
@@ -227,7 +250,9 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
     final partSections = allSections.where((s) {
       final sectionNum = int.tryParse(s['section'].toString());
       final modules = s['modules'] as List<dynamic>? ?? [];
-      return sectionNum != null && allowedIds.contains(sectionNum) && modules.isNotEmpty;
+      return sectionNum != null &&
+          allowedIds.contains(sectionNum) &&
+          modules.isNotEmpty;
     }).toList();
 
     // Cálculo del progreso: SOLO módulos con "ejercicio" en el nombre
@@ -248,12 +273,15 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
         }
       }
     }
-    final double progress = exerciseCount > 0 ? (completedCount / exerciseCount).clamp(0.0, 1.0) : 0.0;
+    final double progress = exerciseCount > 0
+        ? (completedCount / exerciseCount).clamp(0.0, 1.0)
+        : 0.0;
 
     return Column(
       children: [
         // Banner Principal de la Parte
-        _buildPartBanner(partName, progress, completedCount, exerciseCount, partSections.length),
+        _buildPartBanner(partName, progress, completedCount, exerciseCount,
+            partSections.length),
 
         // Lista de Temas (Scrollable)
         Expanded(
@@ -272,7 +300,8 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
 
   // ── BANNER DE PARTE ────────────────────────────────────────────
 
-  Widget _buildPartBanner(String partName, double progress, int completed, int total, int topicCount) {
+  Widget _buildPartBanner(String partName, double progress, int completed,
+      int total, int topicCount) {
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 12, 20, 4),
       padding: const EdgeInsets.all(20),
@@ -284,7 +313,10 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: _accentColor.withOpacity(0.3), blurRadius: 16, offset: const Offset(0, 8)),
+          BoxShadow(
+              color: _accentColor.withOpacity(0.3),
+              blurRadius: 16,
+              offset: const Offset(0, 8)),
         ],
       ),
       child: Column(
@@ -295,18 +327,23 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   'Parte ${_currentPartIndex + 1} de ${_partsList.length}',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12),
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(20),
@@ -314,11 +351,15 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.topic_outlined, color: Colors.white, size: 14),
+                    const Icon(Icons.topic_outlined,
+                        color: Colors.white, size: 14),
                     const SizedBox(width: 4),
                     Text(
                       '$topicCount temas',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12),
                     ),
                   ],
                 ),
@@ -326,7 +367,11 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
             ],
           ),
           const SizedBox(height: 14),
-          Text(partName, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+          Text(partName,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold)),
           const SizedBox(height: 14),
           Row(
             children: [
@@ -336,7 +381,8 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                   child: LinearProgressIndicator(
                     value: progress,
                     backgroundColor: Colors.white.withOpacity(0.2),
-                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                    valueColor:
+                        const AlwaysStoppedAnimation<Color>(Colors.white),
                     minHeight: 7,
                   ),
                 ),
@@ -344,7 +390,10 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
               const SizedBox(width: 14),
               Text(
                 '${(progress * 100).toInt()}%',
-                style: TextStyle(color: Colors.white.withOpacity(0.9), fontWeight: FontWeight.bold, fontSize: 14),
+                style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14),
               ),
             ],
           ),
@@ -371,33 +420,36 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
     // Contamos las actividades completadas dentro de este tema específico
     int topicCompleted = 0;
     for (var m in validModules) {
-      if (m['completionState'] == 1 || m['completionState'] == 2) topicCompleted++;
+      if (m['completionState'] == 1 || m['completionState'] == 2) {
+        topicCompleted++;
+      }
     }
-    
+
     // Para determinar si "todo está hecho", usamos solo las actividades válidas
-    // Si no hay actividades válidas (todo videos), consideramos "hecho" 
+    // Si no hay actividades válidas (todo videos), consideramos "hecho"
     // si el usuario ha visto al menos el contenido, pero visualmente marcamos check.
     // OJO: Si solo hay videos, validModules.isEmpty es true.
-    final bool allDone = validModules.isNotEmpty && topicCompleted == validModules.length;
+    final bool allDone =
+        validModules.isNotEmpty && topicCompleted == validModules.length;
     // Si queremos mantener la barra llena incluso si son solo videos:
     // final double progressValue = validModules.isNotEmpty ? topicCompleted / validModules.length : (modules.isNotEmpty ? 1.0 : 0.0);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isExpanded
               ? _accentColor.withOpacity(0.3)
               : allDone
                   ? Colors.green.withOpacity(0.25)
-                  : Colors.grey.withOpacity(0.12),
+                  : context.borderColor,
           width: isExpanded ? 1.5 : 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isExpanded ? 0.06 : 0.02),
+            color: context.shadowColor,
             blurRadius: isExpanded ? 12 : 6,
             offset: const Offset(0, 3),
           ),
@@ -432,7 +484,8 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                       ),
                       child: Center(
                         child: allDone
-                            ? const Icon(Icons.check_rounded, color: Colors.green, size: 20)
+                            ? const Icon(Icons.check_rounded,
+                                color: Colors.green, size: 20)
                             : Text(
                                 '#${index + 1}',
                                 style: TextStyle(
@@ -454,7 +507,9 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
-                              color: allDone ? Colors.black45 : Colors.black87,
+                              color: allDone
+                                  ? context.subtitleColor
+                                  : context.textColor,
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -468,8 +523,12 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(3),
                                   child: LinearProgressIndicator(
-                                    value: validModules.isNotEmpty ? topicCompleted / validModules.length : 0,
-                                    backgroundColor: Colors.grey[200],
+                                    value: validModules.isNotEmpty
+                                        ? topicCompleted / validModules.length
+                                        : 0,
+                                    backgroundColor: context.isDarkMode
+                                        ? Colors.grey[800]
+                                        : Colors.grey[200],
                                     valueColor: AlwaysStoppedAnimation<Color>(
                                       allDone ? Colors.green : _accentColor,
                                     ),
@@ -497,7 +556,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                       duration: const Duration(milliseconds: 200),
                       child: Icon(
                         Icons.keyboard_arrow_down_rounded,
-                        color: Colors.grey[400],
+                        color: context.subtitleColor,
                         size: 24,
                       ),
                     ),
@@ -518,7 +577,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                       children: [
                         Container(
                           height: 1,
-                          color: Colors.grey.withOpacity(0.1),
+                          color: context.borderColor,
                           margin: const EdgeInsets.only(bottom: 10),
                         ),
                         ...modules.map((m) => _buildExerciseItem(m)),
@@ -535,9 +594,10 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
   // ── ITEM DE EJERCICIO (dentro del tema expandido) ──────────────────
 
   Widget _buildExerciseItem(dynamic module) {
-    bool isCompleted = module['completionState'] == 1 || module['completionState'] == 2;
+    bool isCompleted =
+        module['completionState'] == 1 || module['completionState'] == 2;
     String? grade = module['grade'];
-    
+
     // Check original grade to determine completion if needed
     if (grade != null && grade != '-') {
       isCompleted = true;
@@ -582,10 +642,11 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
           if (url != null) {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => ExerciseWebViewScreen(
-                title: module['name'] ?? 'Ejercicio',
-                url: url,
-              )),
+              MaterialPageRoute(
+                  builder: (context) => ExerciseWebViewScreen(
+                        title: module['name'] ?? 'Ejercicio',
+                        url: url,
+                      )),
             ).then((_) => _checkAndShowBadges());
           }
         },
@@ -602,14 +663,16 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: isCompleted ? Colors.black38 : Colors.black87,
+                    color:
+                        isCompleted ? context.subtitleColor : context.textColor,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
               if (!isCompleted)
-                Icon(Icons.arrow_forward_ios, color: Colors.grey[300], size: 14),
+                Icon(Icons.arrow_forward_ios,
+                    color: Colors.grey[300], size: 14),
             ],
           ),
         ),
@@ -628,9 +691,12 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
       child: Container(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, -4)),
+            BoxShadow(
+                color: context.shadowColor,
+                blurRadius: 8,
+                offset: const Offset(0, -4)),
           ],
         ),
         child: Row(
@@ -640,12 +706,14 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                 child: OutlinedButton.icon(
                   onPressed: _prevPart,
                   icon: const Icon(Icons.arrow_back_ios, size: 14),
-                  label: const Text('Anterior', style: TextStyle(fontWeight: FontWeight.w600)),
+                  label: const Text('Anterior',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: _accentColor,
                     side: BorderSide(color: _accentColor.withOpacity(0.3)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
               ),
@@ -659,12 +727,15 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
                   ),
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('Siguiente Parte', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      Text('Siguiente Parte',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 15)),
                       SizedBox(width: 6),
                       Icon(Icons.arrow_forward_ios, size: 14),
                     ],
@@ -685,7 +756,11 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                     children: [
                       Icon(Icons.flag_rounded, color: Colors.green, size: 20),
                       SizedBox(width: 8),
-                      Text('Última Parte', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 15)),
+                      Text('Última Parte',
+                          style: TextStyle(
+                              color: Colors.green,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15)),
                     ],
                   ),
                 ),
@@ -704,7 +779,11 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                     children: [
                       Icon(Icons.flag_rounded, color: Colors.green, size: 20),
                       SizedBox(width: 8),
-                      Text('Última Parte', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 15)),
+                      Text('Última Parte',
+                          style: TextStyle(
+                              color: Colors.green,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15)),
                     ],
                   ),
                 ),

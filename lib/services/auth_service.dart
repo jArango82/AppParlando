@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io' as io;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AuthService {
   // URLs principales del sistema
@@ -10,7 +12,8 @@ class AuthService {
   static const String _restUrl = '$_moodleBaseUrl/webservice/rest/server.php';
   
   // Token de Administrador (para consultas privilegiadas)
-  static const String _adminToken = '95d1b208404ee73b87e212b4409a48ab';
+  // Se carga desde el archivo .env
+  static String get _adminToken => dotenv.env['MOODLE_ADMIN_TOKEN'] ?? '';
 
   // Implementación del patrón Singleton para una única instancia del servicio
   static final AuthService _instance = AuthService._internal();
@@ -77,9 +80,7 @@ class AuthService {
       }
 
       // Si no logramos obtener detalles, usamos datos básicos
-      if (moodleUser == null) {
-         moodleUser = {'username': username, 'fullname': username};
-      }
+      moodleUser ??= {'username': username, 'fullname': username};
 
       // Estructuramos los datos del usuario para uso en la app
       final user = {
@@ -168,14 +169,14 @@ class AuthService {
       if (sessionCookie != null) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(_keyMoodleSession, sessionCookie);
-        print('Debug: Cookie MoodleSession obtenida exitosamente');
+        debugPrint('Debug: Cookie MoodleSession obtenida exitosamente');
       } else {
-        print('Debug: Cookie MoodleSession NO encontrada en la respuesta');
+        debugPrint('Debug: Cookie MoodleSession NO encontrada en la respuesta');
       }
 
       return sessionCookie;
     } catch (e) {
-      print('Debug: Error de sesión web: $e');
+      debugPrint('Debug: Error de sesión web: $e');
       return null;
     } finally {
       client.close();

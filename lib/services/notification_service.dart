@@ -1,5 +1,6 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 import 'student_service.dart';
 
 class NotificationService {
@@ -74,7 +75,8 @@ class NotificationService {
 
         if (elapsed.inHours < _cooldownHours) {
           // No han pasado 72 horas, no mostramos notificación
-          print('Debug: Notificación omitida. Faltan ${_cooldownHours - elapsed.inHours}h para la próxima.');
+          debugPrint(
+              'Debug: Notificación omitida. Faltan ${_cooldownHours - elapsed.inHours}h para la próxima.');
           return;
         }
       }
@@ -82,13 +84,14 @@ class NotificationService {
       // 2. Obtener datos del estudiante
       final studentData = await StudentService().getStudentProfile();
       if (studentData == null) {
-        print('Debug: No se encontraron datos del estudiante para notificación.');
+        debugPrint(
+            'Debug: No se encontraron datos del estudiante para notificación.');
         return;
       }
 
       final String? endDateStr = studentData['endDate'];
       if (endDateStr == null || endDateStr.isEmpty || endDateStr == '0000-00-00') {
-        print('Debug: Fecha de fin de contrato no disponible.');
+        debugPrint('Debug: Fecha de fin de contrato no disponible.');
         return;
       }
 
@@ -131,9 +134,10 @@ class NotificationService {
       await prefs.setInt(
           _keyLastNotificationTime, DateTime.now().millisecondsSinceEpoch);
 
-      print('Debug: Notificación de contrato mostrada. Días restantes: $daysLeft');
+      debugPrint(
+          'Debug: Notificación de contrato mostrada. Días restantes: $daysLeft');
     } catch (e) {
-      print('Error al verificar notificación de contrato: $e');
+      debugPrint('Error al verificar notificación de contrato: $e');
     }
   }
 

@@ -7,7 +7,8 @@ class ExerciseWebViewScreen extends StatefulWidget {
   final String title;
   final String url;
 
-  const ExerciseWebViewScreen({super.key, required this.title, required this.url});
+  const ExerciseWebViewScreen(
+      {super.key, required this.title, required this.url});
 
   @override
   State<ExerciseWebViewScreen> createState() => _ExerciseWebViewScreenState();
@@ -138,7 +139,7 @@ class _ExerciseWebViewScreenState extends State<ExerciseWebViewScreen> {
       final credentials = await AuthService().getCredentials();
 
       if (credentials == null) {
-        print('Debug: No hay credenciales guardadas');
+        debugPrint('Debug: No hay credenciales guardadas');
         if (mounted) {
           setState(() {
             _hasError = true;
@@ -152,7 +153,7 @@ class _ExerciseWebViewScreenState extends State<ExerciseWebViewScreen> {
       final password = _escapeJs(credentials['password']!);
       final exerciseUrl = widget.url;
 
-      print('Debug: Iniciando login en WebView para cargar ejercicio');
+      debugPrint('Debug: Iniciando login en WebView para cargar ejercicio');
 
       // 2. Crear WebViewController
       final controller = WebViewController()
@@ -161,15 +162,15 @@ class _ExerciseWebViewScreenState extends State<ExerciseWebViewScreen> {
         ..setNavigationDelegate(
           NavigationDelegate(
             onPageStarted: (url) {
-              print('Debug: Page started: $url');
+              debugPrint('Debug: Page started: $url');
             },
             onPageFinished: (url) async {
-              print('Debug: Page finished: $url');
+              debugPrint('Debug: Page finished: $url');
 
               // Si estamos en la página de login y aún no hemos enviado el formulario
               if (url.contains('/login/') && !_loginSubmitted) {
                 _loginSubmitted = true;
-                print('Debug: Autocompletando formulario de login...');
+                debugPrint('Debug: Autocompletando formulario de login...');
 
                 // Inyectar JS que rellena el formulario y lo envía
                 await _controller?.runJavaScript('''
@@ -203,7 +204,7 @@ class _ExerciseWebViewScreenState extends State<ExerciseWebViewScreen> {
 
               // Si seguimos en login DESPUÉS de enviar el formulario → error de credenciales
               if (url.contains('/login/') && _loginSubmitted) {
-                print('Debug: Login falló, mostrando error');
+                debugPrint('Debug: Login falló, mostrando error');
                 if (mounted) {
                   setState(() {
                     _hasError = true;
@@ -215,13 +216,14 @@ class _ExerciseWebViewScreenState extends State<ExerciseWebViewScreen> {
 
               // Login exitoso: si no estamos en la URL del ejercicio, redirigir
               if (!url.contains(Uri.parse(exerciseUrl).path)) {
-                print('Debug: Login exitoso, redirigiendo al ejercicio...');
+                debugPrint(
+                    'Debug: Login exitoso, redirigiendo al ejercicio...');
                 _controller?.loadRequest(Uri.parse(exerciseUrl));
                 return;
               }
 
               // Ya estamos en el ejercicio, inyectar CSS y ocultar loading
-              print('Debug: Ejercicio cargado, inyectando CSS...');
+              debugPrint('Debug: Ejercicio cargado, inyectando CSS...');
               await _controller?.runJavaScript('''
                 (function() {
                   var style = document.createElement('style');
@@ -235,7 +237,7 @@ class _ExerciseWebViewScreenState extends State<ExerciseWebViewScreen> {
               }
             },
             onWebResourceError: (error) {
-              print('Debug: WebView error: ${error.description}');
+              debugPrint('Debug: WebView error: ${error.description}');
             },
           ),
         );
@@ -251,7 +253,7 @@ class _ExerciseWebViewScreenState extends State<ExerciseWebViewScreen> {
         });
       }
     } catch (e) {
-      print('Debug: Setup error: $e');
+      debugPrint('Debug: Setup error: $e');
       if (mounted) {
         setState(() {
           _hasError = true;
@@ -283,8 +285,7 @@ class _ExerciseWebViewScreenState extends State<ExerciseWebViewScreen> {
       body: Stack(
         children: [
           // WebView
-          if (_controller != null)
-            WebViewWidget(controller: _controller!),
+          if (_controller != null) WebViewWidget(controller: _controller!),
 
           // Loading overlay
           if (_isLoading)
@@ -320,11 +321,13 @@ class _ExerciseWebViewScreenState extends State<ExerciseWebViewScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                    const Icon(Icons.error_outline,
+                        size: 48, color: Colors.red),
                     const SizedBox(height: 16),
                     const Text(
                       'Could not load exercise',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 8),
                     Text(
