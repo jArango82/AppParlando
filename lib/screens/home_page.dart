@@ -16,22 +16,21 @@ class _HomePageState extends State<HomePage> {
   Future<Map<String, dynamic>>? _progressFuture;
   Map<String, dynamic>? _user;
 
-  // Lista de consejos diarios para aprender inglés
   static final List<String> _tips = [
-    '🎧 Escucha podcasts en inglés 10 minutos al día — ¡mejora tu comprensión rápidamente!',
-    '📝 Escribe 3 oraciones en inglés cada día para ganar confianza escribiendo.',
-    '🗣️ Practica hablando en voz alta, incluso solo — ¡tu cerebro aprende al escucharte!',
-    '📖 Lee libros infantiles en inglés primero — vocabulario simple, gramática real.',
-    '🎵 Aprende canciones en inglés — la música ayuda a retener vocabulario.',
-    '🔁 Repasa la lección de ayer antes de comenzar una nueva.',
-    '💬 Cambia el idioma de tu celular a inglés para aprender de forma pasiva.',
-    '📺 Ve series en inglés con subtítulos en inglés, no en español.',
-    '✍️ Lleva un cuaderno de vocabulario y repásalo cada domingo.',
-    '🌅 Estudia en la mañana — tu cerebro absorbe idiomas mejor temprano.',
-    '🤔 ¡No traduzcas palabra por palabra — piensa directamente en inglés!',
-    '👥 Encuentra un compañero de estudio y practiquen conversaciones juntos.',
-    '📱 Usa esta app al menos 15 minutos cada día para mejores resultados.',
-    '🎯 Ponte una meta específica: "Hoy voy a aprender 5 palabras nuevas."',
+    'Escucha podcasts en inglés 10 minutos al día — ¡mejora tu comprensión rápidamente!',
+    'Escribe 3 oraciones en inglés cada día para ganar confianza escribiendo.',
+    'Practica hablando en voz alta, incluso solo — ¡tu cerebro aprende al escucharte!',
+    'Lee libros infantiles en inglés primero — vocabulario simple, gramática real.',
+    'Aprende canciones en inglés — la música ayuda a retener vocabulario.',
+    'Repasa la lección de ayer antes de comenzar una nueva.',
+    'Cambia el idioma de tu celular a inglés para aprender de forma pasiva.',
+    'Ve series en inglés con subtítulos en inglés, no en español.',
+    'Lleva un cuaderno de vocabulario y repásalo cada domingo.',
+    'Estudia en la mañana — tu cerebro absorbe idiomas mejor temprano.',
+    '¡No traduzcas palabra por palabra — piensa directamente en inglés!',
+    'Encuentra un compañero de estudio y practiquen conversaciones juntos.',
+    'Usa esta app al menos 15 minutos cada día para mejores resultados.',
+    'Ponte una meta específica: "Hoy voy a aprender 5 palabras nuevas."',
   ];
 
   @override
@@ -267,7 +266,7 @@ class _HomePageState extends State<HomePage> {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-                color: accentColor.withOpacity(0.3),
+                color: accentColor.withValues(alpha: 0.3),
                 blurRadius: 15,
                 offset: const Offset(0, 8)),
           ],
@@ -286,7 +285,7 @@ class _HomePageState extends State<HomePage> {
                   height: 200,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [accentColor, accentColor.withOpacity(0.7)],
+                      colors: [accentColor, accentColor.withValues(alpha: 0.7)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -301,8 +300,8 @@ class _HomePageState extends State<HomePage> {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        Colors.black.withOpacity(0.15),
-                        Colors.black.withOpacity(0.7),
+                        Colors.black.withValues(alpha: 0.15),
+                        Colors.black.withValues(alpha: 0.7),
                       ],
                     ),
                   ),
@@ -327,7 +326,7 @@ class _HomePageState extends State<HomePage> {
                             borderRadius: BorderRadius.circular(10),
                             boxShadow: [
                               BoxShadow(
-                                color: accentColor.withOpacity(0.4),
+                                color: accentColor.withValues(alpha: 0.4),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4),
                               ),
@@ -345,7 +344,7 @@ class _HomePageState extends State<HomePage> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text('$progressPercent% completado',
@@ -360,7 +359,7 @@ class _HomePageState extends State<HomePage> {
                     Text(
                       'Continuar Aprendiendo',
                       style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
+                          color: Colors.white.withValues(alpha: 0.8),
                           fontSize: 13,
                           fontWeight: FontWeight.w600),
                     ),
@@ -383,7 +382,7 @@ class _HomePageState extends State<HomePage> {
                             borderRadius: BorderRadius.circular(4),
                             child: LinearProgressIndicator(
                               value: progress,
-                              backgroundColor: Colors.white.withOpacity(0.2),
+                              backgroundColor: Colors.white.withValues(alpha: 0.2),
                               valueColor:
                                   AlwaysStoppedAnimation<Color>(accentColor),
                               minHeight: 6,
@@ -423,12 +422,12 @@ class _HomePageState extends State<HomePage> {
             ? const Color(0xFF2A1C11)
             : const Color(0xFFFFF7ED),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE67E22).withOpacity(0.15)),
+        border: Border.all(color: const Color(0xFFE67E22).withValues(alpha: 0.15)),
         boxShadow: [
           BoxShadow(
             color: context.isDarkMode
                 ? Colors.transparent
-                : const Color(0xFFE67E22).withOpacity(0.04),
+                : const Color(0xFFE67E22).withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           )
@@ -444,12 +443,13 @@ class _HomePageState extends State<HomePage> {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFE67E22).withOpacity(0.1),
+                    color: const Color(0xFFE67E22).withValues(alpha: 0.1),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   )
                 ]),
-            child: const Text('💡', style: TextStyle(fontSize: 18)),
+            child: const Icon(Icons.tips_and_updates_rounded,
+                color: Color(0xFFE67E22), size: 22),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -555,7 +555,7 @@ class _HomePageState extends State<HomePage> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(p['icon'] as IconData, color: color, size: 22),

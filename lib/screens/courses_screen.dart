@@ -191,9 +191,9 @@ class _CoursesScreenState extends State<CoursesScreen> {
                   errorBuilder: (context, error, stackTrace) => Container(
                     height: 120,
                     width: double.infinity,
-                    color: accentColor.withOpacity(0.1),
+                    color: accentColor.withValues(alpha: 0.1),
                     child: Icon(Icons.school,
-                        size: 48, color: accentColor.withOpacity(0.3)),
+                        size: 48, color: accentColor.withValues(alpha: 0.3)),
                   ),
                 ),
                 // Gradiente superpuesto para mejorar legibilidad del texto
@@ -204,8 +204,8 @@ class _CoursesScreenState extends State<CoursesScreen> {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          Colors.black.withOpacity(0.1),
-                          Colors.black.withOpacity(0.55),
+                          Colors.black.withValues(alpha: 0.1),
+                          Colors.black.withValues(alpha: 0.55),
                         ],
                       ),
                     ),
@@ -223,7 +223,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
                       borderRadius: BorderRadius.circular(10),
                       boxShadow: [
                         BoxShadow(
-                          color: accentColor.withOpacity(0.4),
+                          color: accentColor.withValues(alpha: 0.4),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
@@ -346,7 +346,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
                               value: (progress / 100).clamp(0.0, 1.0),
                               backgroundColor: context.isDarkMode
                                   ? Colors.grey[800]
-                                  : Colors.grey.withOpacity(0.15),
+                                  : Colors.grey.withValues(alpha: 0.15),
                               valueColor:
                                   AlwaysStoppedAnimation<Color>(accentColor),
                               minHeight: 8,

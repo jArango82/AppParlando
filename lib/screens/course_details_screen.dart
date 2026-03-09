@@ -307,14 +307,14 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [_accentColor, _accentColor.withOpacity(0.7)],
+          colors: [_accentColor, _accentColor.withValues(alpha: 0.7)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-              color: _accentColor.withOpacity(0.3),
+              color: _accentColor.withValues(alpha: 0.3),
               blurRadius: 16,
               offset: const Offset(0, 8)),
         ],
@@ -330,7 +330,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -345,7 +345,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
@@ -380,7 +380,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                   borderRadius: BorderRadius.circular(6),
                   child: LinearProgressIndicator(
                     value: progress,
-                    backgroundColor: Colors.white.withOpacity(0.2),
+                    backgroundColor: Colors.white.withValues(alpha: 0.2),
                     valueColor:
                         const AlwaysStoppedAnimation<Color>(Colors.white),
                     minHeight: 7,
@@ -391,7 +391,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
               Text(
                 '${(progress * 100).toInt()}%',
                 style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                     fontWeight: FontWeight.bold,
                     fontSize: 14),
               ),
@@ -441,9 +441,9 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isExpanded
-              ? _accentColor.withOpacity(0.3)
+              ? _accentColor.withValues(alpha: 0.3)
               : allDone
-                  ? Colors.green.withOpacity(0.25)
+                  ? Colors.green.withValues(alpha: 0.25)
                   : context.borderColor,
           width: isExpanded ? 1.5 : 1,
         ),
@@ -478,8 +478,8 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                       height: 40,
                       decoration: BoxDecoration(
                         color: allDone
-                            ? Colors.green.withOpacity(0.1)
-                            : _accentColor.withOpacity(0.08),
+                            ? Colors.green.withValues(alpha: 0.1)
+                            : _accentColor.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Center(
@@ -710,7 +710,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                       style: TextStyle(fontWeight: FontWeight.w600)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: _accentColor,
-                    side: BorderSide(color: _accentColor.withOpacity(0.3)),
+                    side: BorderSide(color: _accentColor.withValues(alpha: 0.3)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14)),
@@ -748,7 +748,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
+                    color: Colors.green.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: const Row(
@@ -771,7 +771,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
+                    color: Colors.green.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: const Row(

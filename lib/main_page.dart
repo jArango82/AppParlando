@@ -152,8 +152,8 @@ class _MainPageState extends State<MainPage>
                           boxShadow: [
                             BoxShadow(
                               color: isDark
-                                  ? Colors.black.withOpacity(0.5)
-                                  : Colors.blue.withOpacity(0.3), // Sombra
+                                  ? Colors.black.withValues(alpha: 0.5)
+                                  : Colors.blue.withValues(alpha: 0.3), // Sombra
                               blurRadius: 10,
                               offset: const Offset(0, 5),
                             ),
@@ -280,7 +280,7 @@ class SlidingNavBarPainter extends CustomPainter {
     path.close();
 
     canvas.drawShadow(path.shift(const Offset(0, -2)),
-        Colors.black.withOpacity(0.1), 4.0, true);
+        Colors.black.withValues(alpha: 0.1), 4.0, true);
     canvas.drawPath(path, paint);
   }
 

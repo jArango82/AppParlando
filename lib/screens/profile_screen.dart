@@ -303,7 +303,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 boxShadow: [
                                   BoxShadow(
                                     color: const Color(0xFF2A60E4)
-                                        .withOpacity(0.3),
+                                        .withValues(alpha: 0.3),
                                     blurRadius: 8,
                                     offset: const Offset(0, 3),
                                   ),
@@ -332,7 +332,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2A60E4).withOpacity(0.1),
+                      color: const Color(0xFF2A60E4).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -371,7 +371,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: Colors.purple.withOpacity(0.1),
+                              color: Colors.purple.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Icon(Icons.dark_mode_rounded,
@@ -390,9 +390,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             onChanged: (value) async {
                               await ThemeProvider.setDarkMode(value);
                             },
-                            activeColor: const Color(0xFF2A60E4),
+                            activeThumbColor: const Color(0xFF2A60E4),
                             inactiveThumbColor: Colors.grey[400],
-                            inactiveTrackColor: Colors.grey.withOpacity(0.2),
+                            inactiveTrackColor: Colors.grey.withValues(alpha: 0.2),
                           ),
                         ],
                       ),
@@ -515,7 +515,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1),
+              color: iconColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, size: 20, color: iconColor),
@@ -582,7 +582,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1FAB5E).withOpacity(0.1),
+                  color: const Color(0xFF1FAB5E).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -638,7 +638,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         value: progressVal,
                         backgroundColor: context.isDarkMode
                             ? Colors.grey[800]
-                            : Colors.grey.withOpacity(0.1),
+                            : Colors.grey.withValues(alpha: 0.1),
                         valueColor: const AlwaysStoppedAnimation<Color>(
                             Color(0xFF2A60E4)),
                         minHeight: 6,
@@ -683,13 +683,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         color: context.cardColor,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: hasBadge ? color.withOpacity(0.3) : context.borderColor,
+          color: hasBadge ? color.withValues(alpha: 0.3) : context.borderColor,
           width: 1.5,
         ),
         boxShadow: hasBadge
             ? [
                 BoxShadow(
-                  color: color.withOpacity(0.12),
+                  color: color.withValues(alpha: 0.12),
                   blurRadius: 8,
                   spreadRadius: 1,
                 ),
@@ -718,8 +718,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
               color: hasBadge
-                  ? color.withOpacity(0.1)
-                  : Colors.grey.withOpacity(0.08),
+                  ? color.withValues(alpha: 0.1)
+                  : Colors.grey.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(

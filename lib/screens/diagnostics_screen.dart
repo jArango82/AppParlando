@@ -206,7 +206,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                            color: gradient[0].withOpacity(0.15),
+                            color: gradient[0].withValues(alpha: 0.15),
                             blurRadius: 8,
                             offset: const Offset(0, 3))
                       ]
@@ -252,7 +252,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
+                color: Colors.red.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child:
@@ -403,7 +403,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.1),
+                  color: iconColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, color: iconColor, size: 20),
@@ -521,7 +521,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
               color: isCompleted
-                  ? textColor.withOpacity(0.3)
+                  ? textColor.withValues(alpha: 0.3)
                   : context.borderColor),
           boxShadow: [
             if (!isCompleted)
@@ -541,10 +541,10 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                   height: 44,
                   decoration: BoxDecoration(
                     color: isCompleted
-                        ? textColor.withOpacity(0.15)
+                        ? textColor.withValues(alpha: 0.15)
                         : hasContent
-                            ? category.gradientColors[0].withOpacity(0.1)
-                            : Colors.grey.withOpacity(0.1),
+                            ? category.gradientColors[0].withValues(alpha: 0.1)
+                            : Colors.grey.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -593,12 +593,12 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: isCompleted
-                          ? textColor.withOpacity(0.2)
+                          ? textColor.withValues(alpha: 0.2)
                           : Colors.white,
                       borderRadius: BorderRadius.circular(8),
                       border: isCompleted
                           ? null
-                          : Border.all(color: Colors.grey.withOpacity(0.15)),
+                          : Border.all(color: Colors.grey.withValues(alpha: 0.15)),
                     ),
                     child: Text(
                       '${(sectionProgress * 100).toInt()}%',
@@ -618,7 +618,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
                   value: sectionProgress,
-                  backgroundColor: textColor.withOpacity(0.1),
+                  backgroundColor: textColor.withValues(alpha: 0.1),
                   valueColor: AlwaysStoppedAnimation<Color>(textColor),
                   minHeight: 4,
                 ),
@@ -745,7 +745,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: context.subtitleColor.withOpacity(0.3),
+                      color: context.subtitleColor.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -837,7 +837,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
       icon = Icons.check_circle_rounded;
       iconBgColor = context.isDarkMode
           ? const Color(0xFF0F3628)
-          : Colors.green.withOpacity(0.1);
+          : Colors.green.withValues(alpha: 0.1);
       iconColor = context.isDarkMode ? const Color(0xFF34D399) : Colors.green;
     } else {
       switch (modname) {
@@ -862,7 +862,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
           break;
         default:
           icon = Icons.play_circle_rounded;
-          iconBgColor = category.gradientColors[0].withOpacity(0.1);
+          iconBgColor = category.gradientColors[0].withValues(alpha: 0.1);
           iconColor = category.gradientColors[0];
       }
     }
@@ -872,7 +872,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
       decoration: BoxDecoration(
         color: isCompleted
             ? (context.isDarkMode
-                ? Colors.green.withOpacity(0.05)
+                ? Colors.green.withValues(alpha: 0.05)
                 : const Color(0xFFF8FFF8))
             : (context.isDarkMode
                 ? Colors.transparent
@@ -881,8 +881,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
         border: Border.all(
           color: isCompleted
               ? (context.isDarkMode
-                  ? Colors.green.withOpacity(0.15)
-                  : Colors.green.withOpacity(0.15))
+                  ? Colors.green.withValues(alpha: 0.15)
+                  : Colors.green.withValues(alpha: 0.15))
               : context.borderColor,
         ),
       ),
@@ -931,7 +931,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: isCompleted
-                              ? context.subtitleColor.withOpacity(0.6)
+                              ? context.subtitleColor.withValues(alpha: 0.6)
                               : context.textColor,
                         ),
                         maxLines: 2,
@@ -946,7 +946,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                     width: 30,
                     height: 30,
                     decoration: BoxDecoration(
-                      color: category.gradientColors[0].withOpacity(0.08),
+                      color: category.gradientColors[0].withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(

@@ -56,10 +56,10 @@ extension AppThemeColors on BuildContext {
   Color get textColor => isDarkMode ? Colors.white : const Color(0xFF1A1D26);
   Color get subtitleColor => isDarkMode ? Colors.grey[400]! : Colors.grey[500]!;
   Color get borderColor => isDarkMode
-      ? Colors.white.withOpacity(0.05)
-      : Colors.grey.withOpacity(0.1);
+      ? Colors.white.withValues(alpha: 0.05)
+      : Colors.grey.withValues(alpha: 0.1);
   Color get shadowColor =>
-      isDarkMode ? Colors.transparent : Colors.black.withOpacity(0.04);
+      isDarkMode ? Colors.transparent : Colors.black.withValues(alpha: 0.04);
 
   // Specific dynamic colors
   Color get inputBgColor =>
