@@ -109,28 +109,28 @@ class NotificationService {
       String body;
 
       if (daysLeft < 0) {
-        title = '⚠️ Contrato Vencido';
+        title = '¡Atención! Contrato Vencido';
         body =
             'Tu contrato venció hace ${daysLeft.abs()} día${daysLeft.abs() == 1 ? '' : 's'}. '
             'Contacta a Parlando para renovarlo.';
       } else if (daysLeft == 0) {
-        title = '🔴 ¡Tu contrato vence hoy!';
+        title = '¡Tu contrato vence hoy!';
         body =
             'Tu contrato finaliza hoy. Comunícate con Parlando para renovar.';
       } else if (daysLeft <= 7) {
-        title = '🔴 ¡Contrato por vencer!';
+        title = '¡Contrato por vencer!';
         body = 'Tu contrato vence en $daysLeft día${daysLeft == 1 ? '' : 's'}. '
             '¡Renueva pronto para no perder acceso!';
       } else if (daysLeft <= 30) {
-        title = '🟡 Contrato próximo a vencer';
+        title = 'Contrato próximo a vencer';
         body = 'Tu contrato finaliza en $daysLeft días. '
             'Te recomendamos planificar tu renovación.';
       } else if (daysLeft <= 60) {
-        title = '📋 Recordatorio de contrato';
+        title = 'Recordatorio de contrato';
         body =
             'Quedan $daysLeft días para que finalice tu contrato con Parlando.';
       } else {
-        title = '📋 Estado de tu contrato';
+        title = 'Estado de tu contrato';
         body =
             'Tu contrato con Parlando está vigente. Quedan $daysLeft días para su finalización.';
       }

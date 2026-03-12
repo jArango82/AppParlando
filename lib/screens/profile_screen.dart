@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import '../services/student_service.dart';
 import '../services/course_service.dart';
@@ -22,6 +24,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // Estos datos vendrán del servicio de Estudiantes (Base de datos parlando_students)
   Map<String, dynamic>? _studentData;
   bool _isLoading = true;
+  bool _isUploadingImage = false;
   final ImagePicker _picker = ImagePicker();
   String? _localImageFile;
   Map<String, String> _lastBadgePerLevel = {};
@@ -38,6 +41,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadProfile() async {
     // Primero obtenemos los datos básicos de la autenticación actual (nombre usuario, foto moodle)
     final authData = await AuthService().getUserData();
+    
+    // Intentamos cargar foto guardada localmente si existe
+    final prefs = await SharedPreferences.getInstance();
+    final savedImageUrl = prefs.getString('profile_image_url');
 
     if (mounted) {
       setState(() {
@@ -45,8 +52,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _studentData = {
           'fullName': authData?['fullname'] ?? 'Estudiante',
           'userName': authData?['username'] ?? '',
-          'imageUrl':
-              authData?['image_url'], // Foto de perfil original de Moodle
+          'imageUrl': savedImageUrl ?? authData?['image_url'],
         };
         _isLoading = true;
       });
@@ -58,7 +64,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           setState(() {
             _studentData = serviceData;
             // Si el servicio no trajo foto (usualmente no la trae), mantenemos la de Moodle
-            if (_studentData!['imageUrl'] == null) {
+            // pero si hay guardada localmente de Supabase usamos esa prioridad
+            if (savedImageUrl != null) {
+              _studentData!['imageUrl'] = savedImageUrl;
+            } else if (_studentData!['imageUrl'] == null) {
               _studentData!['imageUrl'] = authData?['image_url'];
             }
           });
@@ -135,20 +144,68 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _pickImage() async {
-    // Permitimos seleccionar una imagen de la galería
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      if (!mounted) return;
-      setState(() {
-        _localImageFile = image.path;
-      });
-      // Nota: Aquí iría la lógica para subir la imagen al servidor (Moodle API o PHP custom)
-      // Por ahora, actualizamos la vista localmente.
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text(
-                'Foto de perfil actualizada localmente (subida pendiente)')),
-      );
+    try {
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70); // Reducir un poco la calidad para que suba rápido
+      if (image != null) {
+        if (!mounted) return;
+        
+        setState(() {
+          _localImageFile = image.path;
+          _isUploadingImage = true;
+        });
+        
+        // Obtenemos el username para nombrar el archivo
+        final authData = await AuthService().getUserData();
+        final username = authData?['username'] ?? 'user';
+        
+        final File file = File(image.path);
+        final String fileExtension = image.path.split('.').last;
+        final String fileName = '${DateTime.now().millisecondsSinceEpoch}_$username.$fileExtension';
+        
+        // 1. Subir a Supabase
+        await Supabase.instance.client.storage
+            .from('avatars')
+            .upload(fileName, file);
+            
+        // 2. Obtener URL Pública
+        final String imageUrl = Supabase.instance.client.storage
+            .from('avatars')
+            .getPublicUrl(fileName);
+            
+        // 3. Guardar la URL localmente
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('profile_image_url', imageUrl);
+        
+        if (!mounted) return;
+        setState(() {
+          _isUploadingImage = false;
+          // Actualizamos los datos para que reflejen la nueva imagen
+          if (_studentData != null) {
+            _studentData!['imageUrl'] = imageUrl;
+          }
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Foto de perfil actualizada correctamente.'),
+            backgroundColor: Color(0xFF1FAB5E),
+          ),
+        );
+      }
+    } catch (e) {
+       debugPrint('Error subiendo imagen: $e');
+       if (mounted) {
+         setState(() {
+           _isUploadingImage = false;
+           // En caso de error, podríamos volver _localImageFile a null o dejarlo.
+         });
+         ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(
+             content: Text('Error al subir la imagen: $e'),
+             backgroundColor: Colors.red,
+           ),
+         );
+       }
     }
   }
 
@@ -287,16 +344,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 : null,
                           ),
                         ),
+                        if (_isUploadingImage)
+                          Positioned.fill(
+                            child: Container(
+                              decoration: const BoxDecoration(
+                                color: Colors.black45,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              ),
+                            ),
+                          ),
                         // Botón flotante para editar foto
                         Positioned(
                           bottom: 0,
                           right: 0,
                           child: GestureDetector(
-                            onTap: _pickImage,
+                            onTap: _isUploadingImage ? null : _pickImage,
                             child: Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF2A60E4),
+                                color: _isUploadingImage ? Colors.grey : const Color(0xFF2A60E4),
                                 shape: BoxShape.circle,
                                 border:
                                     Border.all(color: Colors.white, width: 3),
@@ -392,7 +463,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             },
                             activeThumbColor: const Color(0xFF2A60E4),
                             inactiveThumbColor: Colors.grey[400],
-                            inactiveTrackColor: Colors.grey.withValues(alpha: 0.2),
+                            inactiveTrackColor:
+                                Colors.grey.withValues(alpha: 0.2),
                           ),
                         ],
                       ),

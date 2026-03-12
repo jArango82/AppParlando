@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/course_service.dart';
 import '../services/auth_service.dart';
 import 'course_details_screen.dart';
@@ -15,6 +16,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   Future<Map<String, dynamic>>? _progressFuture;
   Map<String, dynamic>? _user;
+  String? _profileImageUrl;
 
   static final List<String> _tips = [
     'Escucha podcasts en inglés 10 minutos al día — ¡mejora tu comprensión rápidamente!',
@@ -41,8 +43,14 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadUser() async {
     final user = await AuthService().getUserData();
+    final prefs = await SharedPreferences.getInstance();
+    final savedImageUrl = prefs.getString('profile_image_url');
+    
     if (mounted) {
-      setState(() => _user = user);
+      setState(() {
+        _user = user;
+        _profileImageUrl = savedImageUrl ?? user?['image_url'];
+      });
       _progressFuture = CourseService().getCourseProgress();
       setState(() {});
     }
@@ -85,7 +93,6 @@ class _HomePageState extends State<HomePage> {
 
     final String firstName =
         _user!['fullname']?.split(' ').first ?? 'Estudiante';
-    final String? userImage = _user!['image_url'];
     final dailyTip = _getDailyTip();
 
     return Scaffold(
@@ -102,7 +109,7 @@ class _HomePageState extends State<HomePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ── ENCABEZADO ───────────────────────
-                _buildHeader(firstName, userImage, context),
+                _buildHeader(firstName, _profileImageUrl, context),
                 const SizedBox(height: 24),
 
                 // ── CONTINUAR APRENDIENDO ────────────
