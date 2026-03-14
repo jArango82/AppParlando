@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/course_service.dart';
 import '../services/auth_service.dart';
 import 'course_details_screen.dart';
@@ -15,6 +18,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   Future<Map<String, dynamic>>? _progressFuture;
   Map<String, dynamic>? _user;
+  String? _profileImageUrl;
 
   // Lista de consejos diarios para aprender inglés
   static final List<String> _tips = [
@@ -42,10 +46,49 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadUser() async {
     final user = await AuthService().getUserData();
+    final prefs = await SharedPreferences.getInstance();
+    String? savedImageUrl = prefs.getString('profile_image_url');
+    
+    // Si no hay foto guardada localmente, buscar en Supabase
+    if (savedImageUrl == null && user?['username'] != null) {
+      savedImageUrl = await _fetchAvatarFromSupabase(user!['username']);
+    }
+    
     if (mounted) {
-      setState(() => _user = user);
+      setState(() {
+        _user = user;
+        _profileImageUrl = savedImageUrl;
+      });
       _progressFuture = CourseService().getCourseProgress();
       setState(() {});
+    }
+  }
+
+  /// Busca el avatar del usuario en Supabase Storage
+  Future<String?> _fetchAvatarFromSupabase(String username) async {
+    try {
+      final String fileName = '${username.toLowerCase()}_avatar.jpg';
+      final String baseImageUrl = Supabase.instance.client.storage
+          .from('avatars')
+          .getPublicUrl(fileName);
+          
+      // Verificar si el archivo realmente existe usando HEAD
+      final Uri uri = Uri.parse(baseImageUrl);
+      final request = await HttpClient().headUrl(uri);
+      final response = await request.close();
+      
+      if (response.statusCode == 200) {
+        final String finalImageUrl = '$baseImageUrl?t=${DateTime.now().millisecondsSinceEpoch}';
+        
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('profile_image_url', finalImageUrl);
+        
+        return finalImageUrl;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Debug: Error buscando avatar en Supabase: $e');
+      return null;
     }
   }
 
@@ -86,7 +129,6 @@ class _HomePageState extends State<HomePage> {
 
     final String firstName =
         _user!['fullname']?.split(' ').first ?? 'Estudiante';
-    final String? userImage = _user!['image_url'];
     final dailyTip = _getDailyTip();
 
     return Scaffold(
@@ -103,7 +145,7 @@ class _HomePageState extends State<HomePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ── ENCABEZADO ───────────────────────
-                _buildHeader(firstName, userImage, context),
+                _buildHeader(firstName, _profileImageUrl, context),
                 const SizedBox(height: 24),
 
                 // ── CONTINUAR APRENDIENDO ────────────
@@ -267,7 +309,7 @@ class _HomePageState extends State<HomePage> {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-                color: accentColor.withOpacity(0.3),
+                color: accentColor.withValues(alpha: 0.3),
                 blurRadius: 15,
                 offset: const Offset(0, 8)),
           ],
@@ -282,11 +324,11 @@ class _HomePageState extends State<HomePage> {
                 height: 200,
                 width: double.infinity,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+                errorBuilder: (_, _, _) => Container(
                   height: 200,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [accentColor, accentColor.withOpacity(0.7)],
+                      colors: [accentColor, accentColor.withValues(alpha: 0.7)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -301,8 +343,8 @@ class _HomePageState extends State<HomePage> {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        Colors.black.withOpacity(0.15),
-                        Colors.black.withOpacity(0.7),
+                        Colors.black.withValues(alpha: 0.15),
+                        Colors.black.withValues(alpha: 0.7),
                       ],
                     ),
                   ),
@@ -327,7 +369,7 @@ class _HomePageState extends State<HomePage> {
                             borderRadius: BorderRadius.circular(10),
                             boxShadow: [
                               BoxShadow(
-                                color: accentColor.withOpacity(0.4),
+                                color: accentColor.withValues(alpha: 0.4),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4),
                               ),
@@ -345,7 +387,7 @@ class _HomePageState extends State<HomePage> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text('$progressPercent% completado',
@@ -360,7 +402,7 @@ class _HomePageState extends State<HomePage> {
                     Text(
                       'Continuar Aprendiendo',
                       style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
+                          color: Colors.white.withValues(alpha: 0.8),
                           fontSize: 13,
                           fontWeight: FontWeight.w600),
                     ),
@@ -383,7 +425,7 @@ class _HomePageState extends State<HomePage> {
                             borderRadius: BorderRadius.circular(4),
                             child: LinearProgressIndicator(
                               value: progress,
-                              backgroundColor: Colors.white.withOpacity(0.2),
+                              backgroundColor: Colors.white.withValues(alpha: 0.2),
                               valueColor:
                                   AlwaysStoppedAnimation<Color>(accentColor),
                               minHeight: 6,
@@ -423,12 +465,12 @@ class _HomePageState extends State<HomePage> {
             ? const Color(0xFF2A1C11)
             : const Color(0xFFFFF7ED),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE67E22).withOpacity(0.15)),
+        border: Border.all(color: const Color(0xFFE67E22).withValues(alpha: 0.15)),
         boxShadow: [
           BoxShadow(
             color: context.isDarkMode
                 ? Colors.transparent
-                : const Color(0xFFE67E22).withOpacity(0.04),
+                : const Color(0xFFE67E22).withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           )
@@ -444,7 +486,7 @@ class _HomePageState extends State<HomePage> {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFE67E22).withOpacity(0.1),
+                    color: const Color(0xFFE67E22).withValues(alpha: 0.1),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   )
@@ -557,7 +599,7 @@ class _HomePageState extends State<HomePage> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(p['icon'] as IconData, color: color, size: 22),

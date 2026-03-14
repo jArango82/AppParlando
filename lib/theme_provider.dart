@@ -55,11 +55,11 @@ extension AppThemeColors on BuildContext {
 
   Color get borderColor =>
       isDarkMode
-          ? Colors.white.withOpacity(0.08)
-          : Colors.grey.withOpacity(0.12);
+          ? Colors.white.withValues(alpha: 0.08)
+          : Colors.grey.withValues(alpha: 0.12);
 
   Color get shadowColor =>
       isDarkMode
-          ? Colors.black.withOpacity(0.3)
-          : Colors.black.withOpacity(0.05);
+          ? Colors.black.withValues(alpha: 0.3)
+          : Colors.black.withValues(alpha: 0.05);
 }

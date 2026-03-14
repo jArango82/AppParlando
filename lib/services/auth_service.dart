@@ -238,6 +238,8 @@ class AuthService {
     // Limpiar datos de insignias para que se recalculen al iniciar sesión
     await prefs.remove('earned_badges');
     await prefs.remove('shown_badges');
+    // Limpiar URL de avatar local
+    await prefs.remove('profile_image_url');
   }
 
   Future<bool> isLoggedIn() async {

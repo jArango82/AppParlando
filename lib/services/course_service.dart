@@ -1,20 +1,57 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_parlando/services/auth_service.dart';
 
 class CourseService {
   static const String _moodleBaseUrl = 'https://campus.parlandolingue.com';
   static const String _restUrl = '$_moodleBaseUrl/webservice/rest/server.php';
 
+  // Caché en memoria para evitar llamadas repetidas a _getSiteInfo
+  static int? _cachedUserId;
+  static String? _cachedFullname;
+
+  /// Resuelve userId y fullname. Si moodle_id no está en SharedPreferences,
+  /// lo obtiene de _getSiteInfo y lo guarda para futuras llamadas.
+  Future<Map<String, dynamic>> _resolveUser(String token) async {
+    // 1. Caché en memoria (más rápido)
+    if (_cachedUserId != null) {
+      return {'userId': _cachedUserId!, 'fullname': _cachedFullname ?? 'User'};
+    }
+
+    // 2. SharedPreferences
+    final userData = await AuthService().getUserData();
+    if (userData != null && userData['moodle_id'] != null) {
+      _cachedUserId = userData['moodle_id'];
+      _cachedFullname = userData['fullname'] ?? 'User';
+      return {'userId': _cachedUserId!, 'fullname': _cachedFullname!};
+    }
+
+    // 3. Fallback: obtener de Moodle y guardar
+    final userInfo = await _getSiteInfo(token);
+    _cachedUserId = userInfo['userid'];
+    _cachedFullname = userInfo['fullname'] ?? userData?['fullname'] ?? 'User';
+
+    // Guardar moodle_id y fullname en SharedPreferences para que no se repita
+    if (userData != null) {
+      userData['moodle_id'] = _cachedUserId;
+      if (userInfo['fullname'] != null) {
+        userData['fullname'] = userInfo['fullname'];
+      }
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('auth_user_data', json.encode(userData));
+    }
+
+    return {'userId': _cachedUserId!, 'fullname': _cachedFullname!};
+  }
+
   Future<List<dynamic>> getCourses() async {
     try {
       final token = await AuthService().getToken();
       if (token == null) throw Exception('No session token');
 
-      final userData = await AuthService().getUserData();
-      final int userId = userData != null ? userData['moodle_id'] : (await _getSiteInfo(token))['userid'];
-
-      final courses = await _getEnrolledCourses(token, userId);
+      final resolved = await _resolveUser(token);
+      final courses = await _getEnrolledCourses(token, resolved['userId']);
       return courses;
     } catch (e) {
       throw Exception('Failed to load courses: $e');
@@ -26,8 +63,8 @@ class CourseService {
       final token = await AuthService().getToken();
       if (token == null) throw Exception('No session token');
 
-      final userData = await AuthService().getUserData();
-      final int userId = userData != null ? userData['moodle_id'] : (await _getSiteInfo(token))['userid'];
+      final resolved = await _resolveUser(token);
+      final int userId = resolved['userId'];
 
       // Parallelize requests
       final results = await Future.wait([
@@ -55,19 +92,10 @@ class CourseService {
         throw Exception('No session token found. Please login again.');
       }
 
-      // 2. Get User ID & Name (locally if possible)
-      int userId;
-      String fullname;
-      final userData = await AuthService().getUserData();
-      
-      if (userData != null) {
-        userId = userData['moodle_id'];
-        fullname = userData['fullname'] ?? 'User';
-      } else {
-        final userInfo = await _getSiteInfo(token);
-        userId = userInfo['userid'];
-        fullname = userInfo['fullname'];
-      }
+      // 2. Get User ID & Name (cached)
+      final resolved = await _resolveUser(token);
+      final int userId = resolved['userId'];
+      final String fullname = resolved['fullname'];
 
       // 3. Get Enrolled Courses (using user token, not admin)
       // core_enrol_get_users_courses works for self enrollments

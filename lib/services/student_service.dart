@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 
@@ -61,7 +62,7 @@ class StudentService {
       return null; // El estudiante no fue encontrado en la lista devuelta por el servidor
 
     } catch (e) {
-      print('Error obteniendo el perfil del estudiante: $e');
+      debugPrint('Error obteniendo el perfil del estudiante: $e');
       return null;
     }
   }

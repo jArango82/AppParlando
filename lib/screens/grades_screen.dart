@@ -213,7 +213,7 @@ class _GradesScreenState extends State<GradesScreen> {
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                            color: gradient[0].withOpacity(0.15),
+                            color: gradient[0].withValues(alpha: 0.15),
                             blurRadius: 8,
                             offset: const Offset(0, 3))
                       ]
@@ -530,7 +530,7 @@ class _GradesScreenState extends State<GradesScreen> {
         children: [
           Row(
             children: [
-              Icon(icon, size: 16, color: iconColor.withOpacity(0.7)),
+              Icon(icon, size: 16, color: iconColor.withValues(alpha: 0.7)),
               const SizedBox(width: 8),
               Text(
                 title,
@@ -679,7 +679,7 @@ class _GradesScreenState extends State<GradesScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: gradient[0].withOpacity(0.1),
+                  color: gradient[0].withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -727,7 +727,7 @@ class _GradesScreenState extends State<GradesScreen> {
                   horizontalInterval: 25,
                   getDrawingHorizontalLine: (value) {
                     return FlLine(
-                      color: Colors.grey.withOpacity(0.1),
+                      color: Colors.grey.withValues(alpha: 0.1),
                       strokeWidth: 1,
                       dashArray: [5, 5],
                     );
@@ -805,8 +805,8 @@ class _GradesScreenState extends State<GradesScreen> {
                       show: true,
                       gradient: LinearGradient(
                         colors: [
-                          gradient[0].withOpacity(0.3),
-                          gradient[0].withOpacity(0.0),
+                          gradient[0].withValues(alpha: 0.3),
+                          gradient[0].withValues(alpha: 0.0),
                         ],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
@@ -961,7 +961,7 @@ class _GradesScreenState extends State<GradesScreen> {
 }
 
 // ══════════════════════════════════════════════════════════════════
-//  STATEFUL WIDGET FOR BOTTOM SHEET (VER TODO)
+//  STATEFUL WIDGET FOR BOTTOM SHEET (VER TODAS)
 // ══════════════════════════════════════════════════════════════════
 
 class _AllGradesSheetWidget extends StatefulWidget {
@@ -1044,7 +1044,7 @@ class _AllGradesSheetWidgetState extends State<_AllGradesSheetWidget> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: context.subtitleColor.withOpacity(0.3),
+                    color: context.subtitleColor.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),

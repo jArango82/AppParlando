@@ -285,8 +285,8 @@ class _AchievementOverlayState extends State<AchievementOverlay>
                     center: const Alignment(0, -0.3),
                     radius: 1.5,
                     colors: [
-                      widget.gradientColors[0].withOpacity(0.3),
-                      const Color(0xFF0A0E21).withOpacity(0.97),
+                      widget.gradientColors[0].withValues(alpha: 0.3),
+                      const Color(0xFF0A0E21).withValues(alpha: 0.97),
                       const Color(0xFF0A0E21),
                     ],
                     stops: const [0.0, 0.5, 1.0],
@@ -430,21 +430,21 @@ class _AchievementOverlayState extends State<AchievementOverlay>
                                         boxShadow: [
                                           BoxShadow(
                                             color: widget.gradientColors[0]
-                                                .withOpacity(
+                                                .withValues(alpha:
                                                     _glowPulse.value * 0.4),
                                             blurRadius: 80,
                                             spreadRadius: 30,
                                           ),
                                           BoxShadow(
                                             color: widget.gradientColors[1]
-                                                .withOpacity(
+                                                .withValues(alpha:
                                                     _glowPulse.value * 0.3),
                                             blurRadius: 50,
                                             spreadRadius: 15,
                                           ),
                                           BoxShadow(
                                             color: const Color(0xFFFFD700)
-                                                .withOpacity(
+                                                .withValues(alpha:
                                                     _glowPulse.value * 0.15),
                                             blurRadius: 100,
                                             spreadRadius: 40,
@@ -482,7 +482,7 @@ class _AchievementOverlayState extends State<AchievementOverlay>
                                               boxShadow: [
                                                 BoxShadow(
                                                   color: sparkle.color
-                                                      .withOpacity(0.6),
+                                                      .withValues(alpha: 0.6),
                                                   blurRadius: 6,
                                                   spreadRadius: 1,
                                                 ),
@@ -513,7 +513,7 @@ class _AchievementOverlayState extends State<AchievementOverlay>
                                               end: Alignment.bottomRight,
                                               colors: [
                                                 Colors.transparent,
-                                                Colors.white.withOpacity(0.25),
+                                                Colors.white.withValues(alpha: 0.25),
                                                 Colors.transparent,
                                               ],
                                               stops: [
@@ -529,7 +529,7 @@ class _AchievementOverlayState extends State<AchievementOverlay>
                                           blendMode: BlendMode.srcATop,
                                           child: Container(
                                             color:
-                                                Colors.white.withOpacity(0.1),
+                                                Colors.white.withValues(alpha: 0.1),
                                           ),
                                         ),
                                       ),
@@ -573,14 +573,14 @@ class _AchievementOverlayState extends State<AchievementOverlay>
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: [
-                                    widget.gradientColors[0].withOpacity(0.3),
-                                    widget.gradientColors[1].withOpacity(0.3),
+                                    widget.gradientColors[0].withValues(alpha: 0.3),
+                                    widget.gradientColors[1].withValues(alpha: 0.3),
                                   ],
                                 ),
                                 borderRadius: BorderRadius.circular(30),
                                 border: Border.all(
                                   color:
-                                      widget.gradientColors[1].withOpacity(0.4),
+                                      widget.gradientColors[1].withValues(alpha: 0.4),
                                   width: 1.5,
                                 ),
                               ),
@@ -607,14 +607,14 @@ class _AchievementOverlayState extends State<AchievementOverlay>
                                 children: [
                                   Icon(
                                     Icons.touch_app_rounded,
-                                    color: Colors.white.withOpacity(0.4),
+                                    color: Colors.white.withValues(alpha: 0.4),
                                     size: 18,
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
                                     'Toca para continuar',
                                     style: TextStyle(
-                                      color: Colors.white.withOpacity(0.4),
+                                      color: Colors.white.withValues(alpha: 0.4),
                                       fontSize: 13,
                                       fontWeight: FontWeight.w500,
                                     ),
@@ -684,8 +684,8 @@ class _LightRaysPainter extends CustomPainter {
       final paint = Paint()
         ..shader = RadialGradient(
           colors: [
-            color.withOpacity(opacity),
-            color.withOpacity(0.0),
+            color.withValues(alpha: opacity),
+            color.withValues(alpha: 0.0),
           ],
         ).createShader(Rect.fromCircle(center: Offset.zero, radius: maxRadius));
 
@@ -724,7 +724,7 @@ class _EnergyRingsPainter extends CustomPainter {
       final opacity = (1.0 - ringProgress) * 0.6;
 
       final paint = Paint()
-        ..color = color.withOpacity(opacity)
+        ..color = color.withValues(alpha: opacity)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.5 * (1.0 - ringProgress) + 0.5;
 
@@ -767,7 +767,7 @@ class _ConfettiPainter extends CustomPainter {
           adjustedProgress < 0.7 ? 1.0 : (1.0 - (adjustedProgress - 0.7) / 0.3);
 
       final paint = Paint()
-        ..color = c.color.withOpacity(opacity * 0.9)
+        ..color = c.color.withValues(alpha: opacity * 0.9)
         ..style = PaintingStyle.fill;
 
       canvas.save();

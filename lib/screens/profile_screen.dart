@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import '../services/student_service.dart';
 import '../services/course_service.dart';
@@ -22,6 +24,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // Estos datos vendrán del servicio de Estudiantes (Base de datos parlando_students)
   Map<String, dynamic>? _studentData;
   bool _isLoading = true;
+  bool _isUploadingImage = false;
   final ImagePicker _picker = ImagePicker();
   String? _localImageFile;
   Map<String, String> _lastBadgePerLevel = {};
@@ -38,6 +41,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadProfile() async {
     // Primero obtenemos los datos básicos de la autenticación actual (nombre usuario, foto moodle)
     final authData = await AuthService().getUserData();
+    
+    // Intentamos cargar foto guardada localmente si existe
+    final prefs = await SharedPreferences.getInstance();
+    String? savedImageUrl = prefs.getString('profile_image_url');
+    
+    // Si no hay foto local, intentamos buscarla en Supabase
+    if (savedImageUrl == null && authData?['username'] != null) {
+      savedImageUrl = await _fetchAvatarFromSupabase(authData!['username']);
+    }
 
     if (mounted) {
       setState(() {
@@ -45,8 +57,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _studentData = {
           'fullName': authData?['fullname'] ?? 'Estudiante',
           'userName': authData?['username'] ?? '',
-          'imageUrl':
-              authData?['image_url'], // Foto de perfil original de Moodle
+          'imageUrl': savedImageUrl,
         };
         _isLoading = true;
       });
@@ -58,8 +69,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           setState(() {
             _studentData = serviceData;
             // Si el servicio no trajo foto (usualmente no la trae), mantenemos la de Moodle
-            if (_studentData!['imageUrl'] == null) {
-              _studentData!['imageUrl'] = authData?['image_url'];
+            // pero si hay guardada localmente de Supabase usamos esa prioridad
+            if (savedImageUrl != null) {
+              _studentData!['imageUrl'] = savedImageUrl;
+            } else if (_studentData!['imageUrl'] == null) {
+              _studentData!['imageUrl'] = null;
             }
           });
         }
@@ -71,6 +85,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       // Cargar la última insignia ganada
       _loadLastBadge();
+    }
+  }
+
+  /// Busca el avatar del usuario en Supabase Storage (bucket 'avatars')
+  /// y guarda la URL en SharedPreferences para uso futuro.
+  Future<String?> _fetchAvatarFromSupabase(String username) async {
+    try {
+      final String fileName = '${username.toLowerCase()}_avatar.jpg';
+      final String baseImageUrl = Supabase.instance.client.storage
+          .from('avatars')
+          .getPublicUrl(fileName);
+          
+      // Verificar si el archivo realmente existe usando una petición HEAD
+      final Uri uri = Uri.parse(baseImageUrl);
+      final request = await HttpClient().headUrl(uri);
+      final response = await request.close();
+      
+      if (response.statusCode == 200) {
+        // Añadir timestamp para evitar caché agresiva en el dispositivo
+        final String finalImageUrl = '$baseImageUrl?t=${DateTime.now().millisecondsSinceEpoch}';
+        
+        // Guardar localmente para futuras cargas
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('profile_image_url', finalImageUrl);
+        
+        debugPrint('Debug: Avatar encontrado en Supabase para $username');
+        return finalImageUrl;
+      }
+      
+      debugPrint('Debug: Avatar no encontrado para $username (Status: ${response.statusCode})');
+      return null;
+    } catch (e) {
+      debugPrint('Debug: Error buscando avatar en Supabase: $e');
+      return null;
     }
   }
 
@@ -135,20 +183,75 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _pickImage() async {
-    // Permitimos seleccionar una imagen de la galería
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      if (!mounted) return;
-      setState(() {
-        _localImageFile = image.path;
-      });
-      // Nota: Aquí iría la lógica para subir la imagen al servidor (Moodle API o PHP custom)
-      // Por ahora, actualizamos la vista localmente.
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text(
-                'Foto de perfil actualizada localmente (subida pendiente)')),
-      );
+    try {
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70); // Reducir un poco la calidad para que suba rápido
+      if (image != null) {
+        if (!mounted) return;
+        
+        setState(() {
+          _localImageFile = image.path;
+          _isUploadingImage = true;
+        });
+        
+        // Obtenemos el username para nombrar el archivo
+        final authData = await AuthService().getUserData();
+        final username = authData?['username'] ?? 'user';
+        
+        final File file = File(image.path);
+        final String fileName = '${username.toLowerCase()}_avatar.jpg';
+        
+        // 1. Subir a Supabase (usando upsert para sobreescribir el anterior)
+        await Supabase.instance.client.storage
+            .from('avatars')
+            .upload(
+              fileName, 
+              file,
+              fileOptions: const FileOptions(
+                upsert: true,
+                contentType: 'image/jpeg',
+              ),
+            );
+            
+        // 2. Obtener URL Pública con timestamp para evitar caché
+        final String baseUrl = Supabase.instance.client.storage
+            .from('avatars')
+            .getPublicUrl(fileName);
+        final String imageUrl = '$baseUrl?t=${DateTime.now().millisecondsSinceEpoch}';
+            
+        // 3. Guardar la URL localmente
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('profile_image_url', imageUrl);
+        
+        if (!mounted) return;
+        setState(() {
+          _isUploadingImage = false;
+          // Actualizamos los datos para que reflejen la nueva imagen
+          if (_studentData != null) {
+            _studentData!['imageUrl'] = imageUrl;
+          }
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Foto de perfil actualizada correctamente.'),
+            backgroundColor: Color(0xFF1FAB5E),
+          ),
+        );
+      }
+    } catch (e) {
+       debugPrint('Error subiendo imagen: $e');
+       if (mounted) {
+         setState(() {
+           _isUploadingImage = false;
+           // En caso de error, podríamos volver _localImageFile a null o dejarlo.
+         });
+         ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(
+             content: Text('Error al subir la imagen: $e'),
+             backgroundColor: Colors.red,
+           ),
+         );
+       }
     }
   }
 
@@ -287,23 +390,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 : null,
                           ),
                         ),
+                        if (_isUploadingImage)
+                          Positioned.fill(
+                            child: Container(
+                              decoration: const BoxDecoration(
+                                color: Colors.black45,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              ),
+                            ),
+                          ),
                         // Botón flotante para editar foto
                         Positioned(
                           bottom: 0,
                           right: 0,
                           child: GestureDetector(
-                            onTap: _pickImage,
+                            onTap: _isUploadingImage ? null : _pickImage,
                             child: Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF2A60E4),
+                                color: _isUploadingImage ? Colors.grey : const Color(0xFF2A60E4),
                                 shape: BoxShape.circle,
                                 border:
                                     Border.all(color: Colors.white, width: 3),
                                 boxShadow: [
                                   BoxShadow(
                                     color: const Color(0xFF2A60E4)
-                                        .withOpacity(0.3),
+                                        .withValues(alpha: 0.3),
                                     blurRadius: 8,
                                     offset: const Offset(0, 3),
                                   ),
@@ -332,7 +449,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2A60E4).withOpacity(0.1),
+                      color: const Color(0xFF2A60E4).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -371,7 +488,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: Colors.purple.withOpacity(0.1),
+                              color: Colors.purple.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Icon(Icons.dark_mode_rounded,
@@ -390,9 +507,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             onChanged: (value) async {
                               await ThemeProvider.setDarkMode(value);
                             },
-                            activeColor: const Color(0xFF2A60E4),
+                            activeThumbColor: const Color(0xFF2A60E4),
                             inactiveThumbColor: Colors.grey[400],
-                            inactiveTrackColor: Colors.grey.withOpacity(0.2),
+                            inactiveTrackColor:
+                                Colors.grey.withValues(alpha: 0.2),
                           ),
                         ],
                       ),
@@ -515,7 +633,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1),
+              color: iconColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, size: 20, color: iconColor),
@@ -582,7 +700,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1FAB5E).withOpacity(0.1),
+                  color: const Color(0xFF1FAB5E).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -638,7 +756,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         value: progressVal,
                         backgroundColor: context.isDarkMode
                             ? Colors.grey[800]
-                            : Colors.grey.withOpacity(0.1),
+                            : Colors.grey.withValues(alpha: 0.1),
                         valueColor: const AlwaysStoppedAnimation<Color>(
                             Color(0xFF2A60E4)),
                         minHeight: 6,
@@ -683,13 +801,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         color: context.cardColor,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: hasBadge ? color.withOpacity(0.3) : context.borderColor,
+          color: hasBadge ? color.withValues(alpha: 0.3) : context.borderColor,
           width: 1.5,
         ),
         boxShadow: hasBadge
             ? [
                 BoxShadow(
-                  color: color.withOpacity(0.12),
+                  color: color.withValues(alpha: 0.12),
                   blurRadius: 8,
                   spreadRadius: 1,
                 ),
@@ -718,8 +836,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
               color: hasBadge
-                  ? color.withOpacity(0.1)
-                  : Colors.grey.withOpacity(0.08),
+                  ? color.withValues(alpha: 0.1)
+                  : Colors.grey.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
