@@ -4,7 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/insforge_service.dart';
 import '../services/auth_service.dart';
 import '../services/student_service.dart';
 import '../services/course_service.dart';
@@ -46,9 +46,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final prefs = await SharedPreferences.getInstance();
     String? savedImageUrl = prefs.getString('profile_image_url');
     
-    // Si no hay foto local, intentamos buscarla en Supabase
+    // Si no hay foto local, intentamos buscarla en InsForge
     if (savedImageUrl == null && authData?['username'] != null) {
-      savedImageUrl = await _fetchAvatarFromSupabase(authData!['username']);
+      savedImageUrl = await _fetchAvatarFromInsforge(authData!['username']);
     }
 
     if (mounted) {
@@ -69,7 +69,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           setState(() {
             _studentData = serviceData;
             // Si el servicio no trajo foto (usualmente no la trae), mantenemos la de Moodle
-            // pero si hay guardada localmente de Supabase usamos esa prioridad
+            // pero si hay guardada localmente de InsForge usamos esa prioridad
             if (savedImageUrl != null) {
               _studentData!['imageUrl'] = savedImageUrl;
             } else if (_studentData!['imageUrl'] == null) {
@@ -81,28 +81,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
         debugPrint("Error cargando detalles del estudiante: $e");
         // Si falla, al menos mostramos los datos básicos de autenticación
       }
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
 
       // Cargar la última insignia ganada
-      _loadLastBadge();
+      if (mounted) _loadLastBadge();
     }
   }
 
-  /// Busca el avatar del usuario en Supabase Storage (bucket 'avatars')
+  /// Busca el avatar del usuario en InsForge Storage (bucket 'avatars')
   /// y guarda la URL en SharedPreferences para uso futuro.
-  Future<String?> _fetchAvatarFromSupabase(String username) async {
+  Future<String?> _fetchAvatarFromInsforge(String username) async {
     try {
+      final insforge = InsforgeService();
       final String fileName = '${username.toLowerCase()}_avatar.jpg';
-      final String baseImageUrl = Supabase.instance.client.storage
-          .from('avatars')
-          .getPublicUrl(fileName);
-          
-      // Verificar si el archivo realmente existe usando una petición HEAD
-      final Uri uri = Uri.parse(baseImageUrl);
-      final request = await HttpClient().headUrl(uri);
-      final response = await request.close();
       
-      if (response.statusCode == 200) {
+      // Verificar si el archivo realmente existe
+      final bool exists = await insforge.fileExists('avatars', fileName);
+      
+      if (exists) {
+        final String baseImageUrl = insforge.getPublicUrl('avatars', fileName);
         // Añadir timestamp para evitar caché agresiva en el dispositivo
         final String finalImageUrl = '$baseImageUrl?t=${DateTime.now().millisecondsSinceEpoch}';
         
@@ -110,14 +109,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('profile_image_url', finalImageUrl);
         
-        debugPrint('Debug: Avatar encontrado en Supabase para $username');
+        debugPrint('Debug: Avatar encontrado en InsForge para $username');
         return finalImageUrl;
       }
       
-      debugPrint('Debug: Avatar no encontrado para $username (Status: ${response.statusCode})');
+      debugPrint('Debug: Avatar no encontrado para $username en InsForge');
       return null;
     } catch (e) {
-      debugPrint('Debug: Error buscando avatar en Supabase: $e');
+      debugPrint('Debug: Error buscando avatar en InsForge: $e');
       return null;
     }
   }
@@ -197,26 +196,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final authData = await AuthService().getUserData();
         final username = authData?['username'] ?? 'user';
         
+        final insforge = InsforgeService();
         final File file = File(image.path);
         final String fileName = '${username.toLowerCase()}_avatar.jpg';
         
-        // 1. Subir a Supabase (usando upsert para sobreescribir el anterior)
-        await Supabase.instance.client.storage
-            .from('avatars')
-            .upload(
-              fileName, 
-              file,
-              fileOptions: const FileOptions(
-                upsert: true,
-                contentType: 'image/jpeg',
-              ),
-            );
+        // 1. Subir a InsForge Storage via Edge Function
+        final String uploadedUrl = await insforge.uploadFile(
+          'avatars',
+          fileName,
+          file,
+          contentType: 'image/jpeg',
+        );
             
-        // 2. Obtener URL Pública con timestamp para evitar caché
-        final String baseUrl = Supabase.instance.client.storage
-            .from('avatars')
-            .getPublicUrl(fileName);
-        final String imageUrl = '$baseUrl?t=${DateTime.now().millisecondsSinceEpoch}';
+        // 2. Añadir timestamp para evitar caché
+        final String imageUrl = '$uploadedUrl?t=${DateTime.now().millisecondsSinceEpoch}';
             
         // 3. Guardar la URL localmente
         final prefs = await SharedPreferences.getInstance();
@@ -346,241 +339,245 @@ class _ProfileScreenState extends State<ProfileScreen> {
               centerTitle: false,
               iconTheme: IconThemeData(color: context.textColor),
             ),
-            body: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              child: Column(
-                children: [
-                  // 1. Encabezado del Perfil (Foto + Nombre + Rol)
-                  Center(
-                    child: Stack(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: context.cardColor,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: context.borderColor),
-                            boxShadow: [
-                              BoxShadow(
-                                color: context.shadowColor,
-                                blurRadius: 15,
-                                offset: const Offset(0, 5),
-                              ),
-                            ],
-                          ),
-                          child: CircleAvatar(
-                            radius: 56,
-                            backgroundColor: context.bgScaffold,
-                            backgroundImage: _localImageFile != null
-                                ? FileImage(File(_localImageFile!))
-                                : (user['imageUrl'] != null
-                                    ? NetworkImage(user['imageUrl'])
-                                    : null) as ImageProvider?,
-                            child: (_localImageFile == null &&
-                                    user['imageUrl'] == null)
-                                ? Text(
-                                    fullName.isNotEmpty
-                                        ? fullName[0].toUpperCase()
-                                        : 'E',
-                                    style: const TextStyle(
-                                        fontSize: 36,
-                                        fontWeight: FontWeight.w800,
-                                        color: Color(0xFF2A60E4)))
-                                : null,
-                          ),
-                        ),
-                        if (_isUploadingImage)
-                          Positioned.fill(
-                            child: Container(
-                              decoration: const BoxDecoration(
-                                color: Colors.black45,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Center(
-                                child: CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                ),
-                              ),
-                            ),
-                          ),
-                        // Botón flotante para editar foto
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: GestureDetector(
-                            onTap: _isUploadingImage ? null : _pickImage,
-                            child: Container(
-                              padding: const EdgeInsets.all(10),
+            body: Center(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 600),
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                  child: Column(
+                    children: [
+                      // 1. Encabezado del Perfil (Foto + Nombre + Rol)
+                      Center(
+                        child: Stack(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(4),
                               decoration: BoxDecoration(
-                                color: _isUploadingImage ? Colors.grey : const Color(0xFF2A60E4),
+                                color: context.cardColor,
                                 shape: BoxShape.circle,
-                                border:
-                                    Border.all(color: Colors.white, width: 3),
+                                border: Border.all(color: context.borderColor),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: const Color(0xFF2A60E4)
-                                        .withValues(alpha: 0.3),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
+                                    color: context.shadowColor,
+                                    blurRadius: 15,
+                                    offset: const Offset(0, 5),
                                   ),
                                 ],
                               ),
-                              child: const Icon(Icons.camera_alt_rounded,
-                                  color: Colors.white, size: 16),
+                              child: CircleAvatar(
+                                radius: 56,
+                                backgroundColor: context.bgScaffold,
+                                backgroundImage: _localImageFile != null
+                                    ? FileImage(File(_localImageFile!))
+                                    : (user['imageUrl'] != null
+                                        ? NetworkImage(user['imageUrl'])
+                                        : null) as ImageProvider?,
+                                child: (_localImageFile == null &&
+                                        user['imageUrl'] == null)
+                                    ? Text(
+                                        fullName.isNotEmpty
+                                            ? fullName[0].toUpperCase()
+                                            : 'E',
+                                        style: const TextStyle(
+                                            fontSize: 36,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF2A60E4)))
+                                    : null,
+                              ),
                             ),
+                            if (_isUploadingImage)
+                              Positioned.fill(
+                                child: Container(
+                                  decoration: const BoxDecoration(
+                                    color: Colors.black45,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Center(
+                                    child: CircularProgressIndicator(
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            // Botón flotante para editar foto
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: GestureDetector(
+                                onTap: _isUploadingImage ? null : _pickImage,
+                                child: Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: _isUploadingImage ? Colors.grey : const Color(0xFF2A60E4),
+                                    shape: BoxShape.circle,
+                                    border:
+                                        Border.all(color: Colors.white, width: 3),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFF2A60E4)
+                                            .withValues(alpha: 0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 3),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Icon(Icons.camera_alt_rounded,
+                                      color: Colors.white, size: 16),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        fullName,
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: context.textColor,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2A60E4).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          courseType,
+                          style: const TextStyle(
+                            color: Color(0xFF2A60E4),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    fullName,
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: context.textColor,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2A60E4).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      courseType,
-                      style: const TextStyle(
-                        color: Color(0xFF2A60E4),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
                       ),
-                    ),
-                  ),
-
-                  // Insignias por nivel
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildLevelBadge('A1', const Color(0xFF2A60E4), context),
-                      const SizedBox(width: 10),
-                      _buildLevelBadge('A2', const Color(0xFF1FAB5E), context),
-                      const SizedBox(width: 10),
-                      _buildLevelBadge('B1', const Color(0xFFE67E22), context),
-                      const SizedBox(width: 10),
-                      _buildLevelBadge('B2', const Color(0xFF8E44AD), context),
-                    ],
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  _buildSectionTitle('Ajustes de la App', context),
-                  _buildInfoCard([
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
+    
+                      // Insignias por nivel
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.purple.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(Icons.dark_mode_rounded,
-                                size: 20, color: Colors.purple),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Text('Modo Oscuro',
-                                style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: context.textColor)),
-                          ),
-                          Switch(
-                            value: isDarkMode,
-                            onChanged: (value) async {
-                              await ThemeProvider.setDarkMode(value);
-                            },
-                            activeThumbColor: const Color(0xFF2A60E4),
-                            inactiveThumbColor: Colors.grey[400],
-                            inactiveTrackColor:
-                                Colors.grey.withValues(alpha: 0.2),
-                          ),
+                          _buildLevelBadge('A1', const Color(0xFF2A60E4), context),
+                          const SizedBox(width: 10),
+                          _buildLevelBadge('A2', const Color(0xFF1FAB5E), context),
+                          const SizedBox(width: 10),
+                          _buildLevelBadge('B1', const Color(0xFFE67E22), context),
+                          const SizedBox(width: 10),
+                          _buildLevelBadge('B2', const Color(0xFF8E44AD), context),
                         ],
                       ),
-                    ),
-                  ], context),
-
-                  const SizedBox(height: 20),
-
-                  // 2. Tarjetas de Información Detallada
-                  _buildSectionTitle('Información Personal', context),
-                  _buildInfoCard([
-                    _buildInfoRow(Icons.badge, 'Documento',
-                        document.isEmpty ? 'N/A' : document, context),
-                    _buildInfoRow(Icons.cake, 'Nacimiento',
-                        fDate(user['dateOfBirth']), context),
-                    _buildInfoRow(Icons.person, 'Acudiente',
-                        user['guardianName'] ?? 'N/A', context),
-                    _buildInfoRow(Icons.phone, 'Contacto',
-                        user['contactNumber'] ?? 'N/A', context),
-                  ], context),
-
-                  const SizedBox(height: 20),
-                  _buildSectionTitle('Información Académica', context),
-                  _buildInfoCard([
-                    _buildInfoRow(Icons.school, 'Tipo de Curso',
-                        user['courseType'] ?? 'N/A', context),
-                    _buildInfoRow(Icons.calendar_today, 'Inicio Contrato',
-                        fDate(user['startDate']), context),
-                    _buildInfoRow(Icons.event_busy, 'Fin Contrato',
-                        fDate(user['endDate']), context),
-                    // Opcional: Mostrar número de acta si se requiere
-                    // _buildInfoRow(Icons.description, 'N° Acta', user['actNumber'] ?? 'N/A', context),
-                  ], context),
-
-                  const SizedBox(height: 20),
-                  _buildSectionTitle('Información Financiera', context),
-                  _buildFinancialCard(user, fMoney, context),
-
-                  const SizedBox(height: 20),
-
-                  // Botón de Cerrar Sesión
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _logout,
-                      icon:
-                          const Icon(Icons.logout_rounded, color: Colors.white),
-                      label: const Text('Cerrar Sesión',
-                          style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red[600],
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+    
+                      const SizedBox(height: 30),
+    
+                      _buildSectionTitle('Ajustes de la App', context),
+                      _buildInfoCard([
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.purple.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(Icons.dark_mode_rounded,
+                                    size: 20, color: Colors.purple),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Text('Modo Oscuro',
+                                    style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: context.textColor)),
+                              ),
+                              Switch(
+                                value: isDarkMode,
+                                onChanged: (value) async {
+                                  await ThemeProvider.setDarkMode(value);
+                                },
+                                activeThumbColor: const Color(0xFF2A60E4),
+                                inactiveThumbColor: Colors.grey[400],
+                                inactiveTrackColor:
+                                    Colors.grey.withValues(alpha: 0.2),
+                              ),
+                            ],
+                          ),
                         ),
-                        elevation: 0,
+                      ], context),
+    
+                      const SizedBox(height: 20),
+    
+                      // 2. Tarjetas de Información Detallada
+                      _buildSectionTitle('Información Personal', context),
+                      _buildInfoCard([
+                        _buildInfoRow(Icons.badge, 'Documento',
+                            document.isEmpty ? 'N/A' : document, context),
+                        _buildInfoRow(Icons.cake, 'Nacimiento',
+                            fDate(user['dateOfBirth']), context),
+                        _buildInfoRow(Icons.person, 'Acudiente',
+                            user['guardianName'] ?? 'N/A', context),
+                        _buildInfoRow(Icons.phone, 'Contacto',
+                            user['contactNumber'] ?? 'N/A', context),
+                      ], context),
+    
+                      const SizedBox(height: 20),
+                      _buildSectionTitle('Información Académica', context),
+                      _buildInfoCard([
+                        _buildInfoRow(Icons.school, 'Tipo de Curso',
+                            user['courseType'] ?? 'N/A', context),
+                        _buildInfoRow(Icons.calendar_today, 'Inicio Contrato',
+                            fDate(user['startDate']), context),
+                        _buildInfoRow(Icons.event_busy, 'Fin Contrato',
+                            fDate(user['endDate']), context),
+                      ], context),
+    
+                      const SizedBox(height: 20),
+                      _buildSectionTitle('Información Financiera', context),
+                      _buildFinancialCard(user, fMoney, context),
+    
+                      const SizedBox(height: 20),
+    
+                      // Botón de Cerrar Sesión
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _logout,
+                          icon:
+                              const Icon(Icons.logout_rounded, color: Colors.white),
+                          label: const Text('Cerrar Sesión',
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red[600],
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 0,
+                          ),
+                        ),
                       ),
-                    ),
+    
+                      const SizedBox(height: 40), // Espacio inferior para scroll
+                    ],
                   ),
-
-                  const SizedBox(height: 40), // Espacio inferior para scroll
-                ],
+                ),
               ),
             ),
           );
-        });
+        },
+      );
   }
 
   // Widget auxiliar para títulos de sección

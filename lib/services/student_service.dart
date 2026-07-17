@@ -6,7 +6,7 @@ import 'auth_service.dart';
 class StudentService {
   // Asumimos que el script PHP está accesible en esta ruta basándonos en la estructura del proyecto web.
   // Esta URL conecta directamente con la API que consulta la base de datos 'parlando_students'.
-  static const String _studentsApiUrl = 'https://parlandolingue.edu.co/assets/php/list_students.php';
+  static const String _studentsApiUrl = 'https://parlandolingue.com/assets/php/list_students.php';
 
   static final StudentService _instance = StudentService._internal();
   factory StudentService() => _instance;

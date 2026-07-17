@@ -71,6 +71,73 @@ class _MainPageState extends State<MainPage>
     super.dispose();
   }
 
+  Widget _buildNavigationRail(
+    BuildContext context,
+    Color barColor,
+    Color activeBtnColor,
+    Color activeIconColor,
+    Color inactiveIconColor,
+  ) {
+    final isDark = context.isDarkMode;
+    return Container(
+      width: 90,
+      color: barColor,
+      child: SafeArea(
+        right: false,
+        child: Column(
+          children: [
+            const SizedBox(height: 24),
+            // Logo arriba
+            Image.asset(
+              'assets/logo_001.webp',
+              width: 50,
+              height: 50,
+              errorBuilder: (context, error, stackTrace) => const Icon(Icons.school, color: Colors.white, size: 40),
+            ),
+            const Spacer(),
+            // Iconos de navegación vertical
+            Column(
+              children: List.generate(_icons.length, (index) {
+                final isSelected = _selectedIndex == index;
+                return GestureDetector(
+                  onTap: () => _onItemTapped(index),
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(vertical: 16),
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: isSelected ? activeBtnColor : Colors.transparent,
+                      shape: BoxShape.circle,
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: isDark
+                                    ? Colors.black.withValues(alpha: 0.3)
+                                    : Colors.blue.withValues(alpha: 0.2),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              )
+                            ]
+                          : [],
+                    ),
+                    child: Icon(
+                      isSelected
+                          ? (index == 4 ? Icons.person : _icons[index])
+                          : _icons[index],
+                      color: isSelected ? activeIconColor : inactiveIconColor.withValues(alpha: 0.7),
+                      size: 26,
+                    ),
+                  ),
+                );
+              }),
+            ),
+            const Spacer(),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final Size size = MediaQuery.of(context).size;
@@ -81,7 +148,45 @@ class _MainPageState extends State<MainPage>
     final barColor = isDark ? context.cardColor : Colors.blue;
     final activeBtnColor = isDark ? Colors.blue : Colors.white;
     final activeIconColor = isDark ? Colors.white : Colors.blue;
-    final inactiveIconColor = isDark ? Colors.grey[500] : Colors.white;
+    final inactiveIconColor = isDark ? Colors.grey.shade500 : Colors.white;
+
+    final bool isWide = context.isWideScreen;
+
+    if (isWide) {
+      return Scaffold(
+        backgroundColor: context.bgScaffold,
+        body: Row(
+          children: [
+            _buildNavigationRail(
+              context,
+              barColor,
+              activeBtnColor,
+              activeIconColor,
+              inactiveIconColor,
+            ),
+            VerticalDivider(
+              width: 1,
+              thickness: 1,
+              color: context.borderColor,
+            ),
+            Expanded(
+              child: IndexedStack(
+                index: _selectedIndex,
+                children: [
+                  const HomePage(), // Página 0 - Inicio
+                  const CoursesScreen(), // Página 1 - Cursos
+                  const DiagnosticsScreen(), // Página 2 - Diagnósticos
+                  const GradesScreen(), // Página 3 - Notas
+                  // Forzamos reconstrucción al entrar al perfil para actualizar datos (badges)
+                  ProfileScreen(
+                      key: _selectedIndex == 4 ? ValueKey(DateTime.now()) : null),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: context.bgScaffold, // Fondo dinámico

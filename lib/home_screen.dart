@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'main_page.dart';
 import 'services/auth_service.dart';
 import 'widgets/custom_loading_indicator.dart';
+import 'theme_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -107,155 +108,202 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  Widget _buildLoginForm(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Línea divisoria sutil
+        const Divider(
+          color: Colors.grey,
+          thickness: 0.5,
+          indent: 60,
+          endIndent: 60,
+        ),
+
+        const SizedBox(height: 10),
+
+        // Texto "Iniciar Sesión"
+        const Text(
+          "Iniciar Sesión",
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w500,
+            color: Colors.black,
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        // Campo de Usuario
+        TextField(
+          controller: _usernameController,
+          style: const TextStyle(color: Colors.black),
+          decoration: InputDecoration(
+            labelText: "Usuario",
+            labelStyle: const TextStyle(color: Colors.black54),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            prefixIcon:
+                const Icon(Icons.person, color: Colors.blue),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(
+                  color: Colors.blue, width: 2),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // Campo de Contraseña
+        TextField(
+          controller: _passwordController,
+          obscureText: true,
+          style: const TextStyle(color: Colors.black),
+          decoration: InputDecoration(
+            labelText: "Contraseña",
+            labelStyle: const TextStyle(color: Colors.black54),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            prefixIcon:
+                const Icon(Icons.lock, color: Colors.blue),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(
+                  color: Colors.blue, width: 2),
+            ),
+          ),
+        ),
+        const SizedBox(height: 30),
+
+        // Botón de Login
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _isLoading ? null : _handleLogin,
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              backgroundColor: Colors.blue,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: _isLoading
+                ? const SizedBox(
+                    height: 30,
+                    width: 30,
+                    child: CustomLoadingIndicator(size: 30),
+                  )
+                : const Text(
+                    "Ingresar",
+                    style: TextStyle(
+                        fontSize: 18,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold),
+                  ),
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        // Enlace de Olvidé mi contraseña
+        TextButton(
+          onPressed: () {},
+          child: const Text(
+            "Olvidé mi contraseña",
+            style: TextStyle(
+              color: Colors.blue,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final bool isWide = context.isWideScreen;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 30.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                const SizedBox(height: 80), // Espacio superior fijo
-
-                AnimatedBuilder(
-                  animation: _animationController,
-                  builder: (context, child) {
-                    return Transform.translate(
-                      // Usamos el valor calculado o 0 si aun no está listo
-                      offset: Offset(0, _logoOffsetY?.value ?? 0),
-                      child: child,
-                    );
-                  },
-                  child: Image.asset(
-                    'assets/logo_002.webp',
-                    width: 350,
-                    height: 350,
+            padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 20.0),
+            child: isWide
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Left: Logo
+                      Expanded(
+                        flex: 5,
+                        child: Center(
+                          child: AnimatedBuilder(
+                            animation: _animationController,
+                            builder: (context, child) {
+                              return Transform.translate(
+                                offset: Offset(0, _logoOffsetY?.value ?? 0),
+                                child: child,
+                              );
+                            },
+                            child: Image.asset(
+                              'assets/logo_002.webp',
+                              width: 320,
+                              height: 320,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 30),
+                      // Right: Login Card / Form
+                      Expanded(
+                        flex: 6,
+                        child: Center(
+                          child: Container(
+                            constraints: const BoxConstraints(maxWidth: 400),
+                            child: FadeTransition(
+                              opacity: _formOpacityAnimation,
+                              child: _buildLoginForm(context),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 80),
+                      AnimatedBuilder(
+                        animation: _animationController,
+                        builder: (context, child) {
+                          return Transform.translate(
+                            offset: Offset(0, _logoOffsetY?.value ?? 0),
+                            child: child,
+                          );
+                        },
+                        child: Image.asset(
+                          'assets/logo_002.webp',
+                          width: 320,
+                          height: 320,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                      Transform.translate(
+                        offset: const Offset(0, -40),
+                        child: FadeTransition(
+                          opacity: _formOpacityAnimation,
+                          child: Container(
+                            constraints: const BoxConstraints(maxWidth: 400),
+                            child: _buildLoginForm(context),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-
-                // Formulario
-                // Transformamos para ajustar posición
-                Transform.translate(
-                  offset: const Offset(0, -60),
-                  child: FadeTransition(
-                    opacity: _formOpacityAnimation,
-                    child: Column(
-                      children: [
-                        // Línea divisoria sutil
-                        const Divider(
-                          color: Colors.grey,
-                          thickness: 0.5,
-                          indent: 60,
-                          endIndent: 60,
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        // Texto "Iniciar Sesión"
-                        const Text(
-                          "Iniciar Sesión",
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.black,
-                          ),
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // Campo de Usuario
-                        TextField(
-                          controller: _usernameController,
-                          style: const TextStyle(color: Colors.black),
-                          decoration: InputDecoration(
-                            labelText: "Usuario",
-                            labelStyle: const TextStyle(color: Colors.black54),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            prefixIcon:
-                                const Icon(Icons.person, color: Colors.blue),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                  color: Colors.blue, width: 2),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // Campo de Contraseña
-                        TextField(
-                          controller: _passwordController,
-                          obscureText: true,
-                          style: const TextStyle(color: Colors.black),
-                          decoration: InputDecoration(
-                            labelText: "Contraseña",
-                            labelStyle: const TextStyle(color: Colors.black54),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            prefixIcon:
-                                const Icon(Icons.lock, color: Colors.blue),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                  color: Colors.blue, width: 2),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 30),
-
-                        // Botón de Login
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _isLoading ? null : _handleLogin,
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 15),
-                              backgroundColor: Colors.blue,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: _isLoading
-                                ? const SizedBox(
-                                    height: 30,
-                                    width: 30,
-                                    child: CustomLoadingIndicator(size: 30),
-                                  )
-                                : const Text(
-                                    "Ingresar",
-                                    style: TextStyle(
-                                        fontSize: 18,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // Enlace de Olvidé mi contraseña
-                        TextButton(
-                          onPressed: () {},
-                          child: const Text(
-                            "Olvidé mi contraseña",
-                            style: TextStyle(
-                              color: Colors.blue,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ),
         ),
       ),

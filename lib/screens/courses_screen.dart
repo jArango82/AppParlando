@@ -116,6 +116,30 @@ class _CoursesScreenState extends State<CoursesScreen> {
               .where((c) => c['id'] != 9 && c['id'] != 10)
               .toList();
 
+          final bool isWide = context.isWideScreen;
+
+          if (isWide) {
+            return Center(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 1100),
+                child: GridView.builder(
+                  padding: const EdgeInsets.all(16),
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 500,
+                    crossAxisSpacing: 20,
+                    mainAxisSpacing: 20,
+                    childAspectRatio: 1.15,
+                  ),
+                  itemCount: courses.length,
+                  itemBuilder: (context, index) {
+                    final course = courses[index];
+                    return _buildCourseCard(course, context);
+                  },
+                ),
+              ),
+            );
+          }
+
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: courses.length,
@@ -161,7 +185,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 20),
+      margin: context.isWideScreen ? EdgeInsets.zero : const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
         color: context.cardColor,
         borderRadius: BorderRadius.circular(24),

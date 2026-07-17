@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/insforge_service.dart';
 import '../services/course_service.dart';
 import '../services/auth_service.dart';
 import 'course_details_screen.dart';
@@ -49,9 +48,9 @@ class _HomePageState extends State<HomePage> {
     final prefs = await SharedPreferences.getInstance();
     String? savedImageUrl = prefs.getString('profile_image_url');
     
-    // Si no hay foto guardada localmente, buscar en Supabase
+    // Si no hay foto guardada localmente, buscar en InsForge
     if (savedImageUrl == null && user?['username'] != null) {
-      savedImageUrl = await _fetchAvatarFromSupabase(user!['username']);
+      savedImageUrl = await _fetchAvatarFromInsforge(user!['username']);
     }
     
     if (mounted) {
@@ -64,20 +63,17 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  /// Busca el avatar del usuario en Supabase Storage
-  Future<String?> _fetchAvatarFromSupabase(String username) async {
+  /// Busca el avatar del usuario en InsForge Storage
+  Future<String?> _fetchAvatarFromInsforge(String username) async {
     try {
+      final insforge = InsforgeService();
       final String fileName = '${username.toLowerCase()}_avatar.jpg';
-      final String baseImageUrl = Supabase.instance.client.storage
-          .from('avatars')
-          .getPublicUrl(fileName);
-          
-      // Verificar si el archivo realmente existe usando HEAD
-      final Uri uri = Uri.parse(baseImageUrl);
-      final request = await HttpClient().headUrl(uri);
-      final response = await request.close();
       
-      if (response.statusCode == 200) {
+      // Verificar si el archivo realmente existe
+      final bool exists = await insforge.fileExists('avatars', fileName);
+      
+      if (exists) {
+        final String baseImageUrl = insforge.getPublicUrl('avatars', fileName);
         final String finalImageUrl = '$baseImageUrl?t=${DateTime.now().millisecondsSinceEpoch}';
         
         final prefs = await SharedPreferences.getInstance();
@@ -87,7 +83,7 @@ class _HomePageState extends State<HomePage> {
       }
       return null;
     } catch (e) {
-      debugPrint('Debug: Error buscando avatar en Supabase: $e');
+      debugPrint('Debug: Error buscando avatar en InsForge: $e');
       return null;
     }
   }
@@ -141,42 +137,47 @@ class _HomePageState extends State<HomePage> {
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── ENCABEZADO ───────────────────────
-                _buildHeader(firstName, _profileImageUrl, context),
-                const SizedBox(height: 24),
+            child: Center(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 800),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── ENCABEZADO ───────────────────────
+                    _buildHeader(firstName, _profileImageUrl, context),
+                    const SizedBox(height: 24),
 
-                // ── CONTINUAR APRENDIENDO ────────────
-                FutureBuilder<Map<String, dynamic>>(
-                  future: _progressFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return _buildShimmerCard(context);
-                    } else if (snapshot.hasError || !snapshot.hasData) {
-                      return const SizedBox.shrink();
-                    }
-                    return _buildContinueLearning(snapshot.data!);
-                  },
+                    // ── CONTINUAR APRENDIENDO ────────────
+                    FutureBuilder<Map<String, dynamic>>(
+                      future: _progressFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return _buildShimmerCard(context);
+                        } else if (snapshot.hasError || !snapshot.hasData) {
+                          return const SizedBox.shrink();
+                        }
+                        return _buildContinueLearning(snapshot.data!);
+                      },
+                    ),
+                    const SizedBox(height: 24),
+
+                    // ── CONSEJO DEL DÍA ──────────────────
+                    _buildDailyTip(dailyTip, context),
+                    const SizedBox(height: 24),
+
+                    // ── PRÁCTICA RÁPIDA ──────────────────
+                    _buildSectionTitle(
+                        'Qué aprenderás', Icons.bolt_rounded, context),
+                    const SizedBox(height: 12),
+                    _buildQuickPracticeGrid(context),
+                    const SizedBox(height: 24),
+
+                    // ── FRASE MOTIVACIONAL ───────────────
+                    _buildMotivationalQuote(context),
+                    const SizedBox(height: 16),
+                  ],
                 ),
-                const SizedBox(height: 24),
-
-                // ── CONSEJO DEL DÍA ──────────────────
-                _buildDailyTip(dailyTip, context),
-                const SizedBox(height: 24),
-
-                // ── PRÁCTICA RÁPIDA ──────────────────
-                _buildSectionTitle(
-                    'Qué aprenderás', Icons.bolt_rounded, context),
-                const SizedBox(height: 12),
-                _buildQuickPracticeGrid(context),
-                const SizedBox(height: 24),
-
-                // ── FRASE MOTIVACIONAL ───────────────
-                _buildMotivationalQuote(context),
-                const SizedBox(height: 16),
-              ],
+              ),
             ),
           ),
         ),
@@ -564,15 +565,17 @@ class _HomePageState extends State<HomePage> {
       },
     ];
 
+    final bool isWide = context.isWideScreen;
+
     return GridView.builder(
       shrinkWrap: true,
       clipBehavior: Clip.none, // Evita que las sombras se recorten y generen bugs visuales
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: isWide ? 4 : 2,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 1.15, // Ajustado para dar un poco más de altura vertical
+        childAspectRatio: isWide ? 1.3 : 1.15, // Ajustado para dar un poco más de altura vertical
       ),
       itemCount: practices.length,
       itemBuilder: (context, index) {

@@ -213,14 +213,24 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
           final sections = snapshot.data!['sections'] as List<dynamic>;
 
           if (_partsList.isEmpty) {
-            return ListView.builder(
-              padding: const EdgeInsets.all(20),
-              itemCount: sections.length,
-              itemBuilder: (context, i) => _buildTopicCard(sections[i], i),
+            return Center(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 800),
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(20),
+                  itemCount: sections.length,
+                  itemBuilder: (context, i) => _buildTopicCard(sections[i], i),
+                ),
+              ),
             );
           }
 
-          return _buildPartView(sections);
+          return Center(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 800),
+              child: _buildPartView(sections),
+            ),
+          );
         },
       ),
     );

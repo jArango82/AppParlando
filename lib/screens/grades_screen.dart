@@ -408,6 +408,127 @@ class _GradesScreenState extends State<GradesScreen> {
       }
     }
 
+    final bool isWide = context.isWideScreen;
+
+    if (isWide) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Panel Izquierdo: Resúmenes y Gráfico
+          Expanded(
+            flex: 6,
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 16, 10, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildSummaryCard(
+                          title: 'Nota Promedio',
+                          value: '$avgGrade%',
+                          icon: Icons.auto_graph_rounded,
+                          iconColor: const Color(0xFF2A60E4),
+                          subtitle: 'Del curso actual',
+                          subtitleColor: Colors.grey[500]!,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildSummaryCard(
+                          title: 'Unidades Listas',
+                          value: '$completedExercises',
+                          suffix: ' / $totalExercises',
+                          icon: Icons.school_rounded,
+                          iconColor: const Color(0xFF8E44AD),
+                          progress: totalExercises > 0
+                              ? completedExercises / totalExercises
+                              : 0.0,
+                          gradient: gradient,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  _buildProgressTrendCard(level, gradient, partsAverages),
+                ],
+              ),
+            ),
+          ),
+          // Panel Derecho: Evaluaciones Recientes
+          Expanded(
+            flex: 4,
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(10, 16, 20, 24),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: context.cardColor,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: context.borderColor),
+                boxShadow: [
+                  BoxShadow(
+                    color: context.shadowColor,
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  )
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Evaluaciones',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: context.textColor,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => _showAllGradesSheet(context, gradient),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                          child: Text(
+                            'Ver Todo',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: gradient[0],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: allGradedModules.isEmpty
+                        ? Center(
+                            child: Text('Aún no tienes notas recientes.',
+                                style: TextStyle(color: Colors.grey[400])),
+                          )
+                        : ListView.builder(
+                            physics: const BouncingScrollPhysics(),
+                            itemCount: allGradedModules.length > 10 ? 10 : allGradedModules.length,
+                            itemBuilder: (context, index) {
+                              final m = allGradedModules.reversed.toList()[index];
+                              return _buildRecentAssessmentCard(m);
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),

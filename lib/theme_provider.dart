@@ -41,6 +41,8 @@ class ThemeProvider {
 extension AppThemeColors on BuildContext {
   bool get isDarkMode => Theme.of(this).brightness == Brightness.dark;
 
+  bool get isWideScreen => MediaQuery.of(this).size.width >= 650;
+
   Color get bgScaffold =>
       isDarkMode ? const Color(0xFF0F1117) : const Color(0xFFF5F7FA);
 

@@ -145,15 +145,20 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
           )
         ],
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Selector de Niveles (Diagnósticos) ──
-          if (!_isLoading && !_hasError && _categories.isNotEmpty)
-            Container(color: context.cardColor, child: _buildCategoryChips()),
-          // ── Cuerpo ──
-          Expanded(child: _buildBody()),
-        ],
+      body: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Selector de Niveles (Diagnósticos) ──
+              if (!_isLoading && !_hasError && _categories.isNotEmpty)
+                Container(color: context.cardColor, child: _buildCategoryChips()),
+              // ── Cuerpo ──
+              Expanded(child: _buildBody()),
+            ],
+          ),
+        ),
       ),
     );
   }

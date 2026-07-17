@@ -5,7 +5,7 @@ import 'course_service.dart';
 import 'auth_service.dart';
 import '../config/course_config.dart';
 import '../repositories/badge_repository.dart';
-import '../repositories/supabase_badge_repository.dart';
+import '../repositories/insforge_badge_repository.dart';
 
 /// Servicio centralizado para gestionar las insignias (badges) del estudiante.
 ///
@@ -20,8 +20,8 @@ class BadgeService {
   factory BadgeService() => _instance;
   BadgeService._internal();
 
-  /// Repositorio para sincronizar insignias con Supabase.
-  final BadgeRepository _badgeRepository = SupabaseBadgeRepository();
+  /// Repositorio para sincronizar insignias con InsForge.
+  final BadgeRepository _badgeRepository = InsforgeBadgeRepository();
 
   /// Obtiene el moodle_id del usuario autenticado.
   /// Retorna null si no hay sesión activa.
@@ -325,7 +325,7 @@ class BadgeService {
   /// Obtiene la lista de IDs de badges ya ganados.
   ///
   /// Combina las insignias guardadas localmente (SharedPreferences) con las
-  /// almacenadas en Supabase, garantizando que ambas fuentes estén sincronizadas.
+  /// almacenadas en InsForge, garantizando que ambas fuentes estén sincronizadas.
   Future<Set<String>> getEarnedBadgeIds() async {
     // 1. Leer insignias locales
     final prefs = await SharedPreferences.getInstance();
@@ -334,7 +334,7 @@ class BadgeService {
         ? (json.decode(stored) as List<dynamic>).cast<String>().toSet()
         : {};
 
-    // 2. Intentar leer insignias remotas de Supabase
+    // 2. Intentar leer insignias remotas de InsForge
     try {
       final moodleUserId = await _getMoodleUserId();
       if (moodleUserId != null) {
@@ -347,7 +347,7 @@ class BadgeService {
       }
     } catch (e) {
       debugPrint('BadgeService.getEarnedBadgeIds: Error sincronizando con '
-          'Supabase, usando solo datos locales: $e');
+          'InsForge, usando solo datos locales: $e');
     }
 
     return localBadges;
@@ -356,7 +356,7 @@ class BadgeService {
   /// Marca un badge como ganado.
   ///
   /// Guarda la insignia tanto localmente (SharedPreferences) como en
-  /// Supabase a través del repositorio remoto.
+  /// InsForge a través del repositorio remoto.
   Future<void> markBadgeEarned(String badgeId) async {
     // 1. Guardar localmente
     final earned = await getEarnedBadgeIds();
@@ -364,20 +364,20 @@ class BadgeService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyEarnedBadges, json.encode(earned.toList()));
 
-    // 2. Sincronizar con Supabase
+    // 2. Sincronizar con InsForge
     try {
       final moodleUserId = await _getMoodleUserId();
       if (moodleUserId != null) {
         await _badgeRepository.addBadge(moodleUserId, badgeId);
         debugPrint('BadgeService.markBadgeEarned: Insignia "$badgeId" '
-            'sincronizada con Supabase para usuario $moodleUserId.');
+            'sincronizada con InsForge para usuario $moodleUserId.');
       } else {
         debugPrint('BadgeService.markBadgeEarned: No se pudo obtener '
             'moodle_id. Insignia guardada solo localmente.');
       }
     } catch (e) {
       debugPrint('BadgeService.markBadgeEarned: Error al sincronizar '
-          'insignia "$badgeId" con Supabase: $e');
+          'insignia "$badgeId" con InsForge: $e');
       // No lanzamos excepción — la insignia ya se guardó localmente.
     }
   }
