@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'home_screen.dart'; // Esteban bb aquí es a donde iremos nosotros después del video
 import 'package:app_parlando/services/auth_service.dart';
+import 'package:app_parlando/services/app_update_service.dart';
 import 'main_page.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -64,6 +65,9 @@ class _SplashScreenState extends State<SplashScreen> {
     if (_hasNavigated) return;
     _hasNavigated = true;
     _safetyTimer?.cancel();
+
+    // Actualización in-app (Play Store). No bloquea si no hay update.
+    await AppUpdateService.checkAndUpdate();
 
     // Check if user is logged in
     final isLoggedIn = await AuthService().isLoggedIn();

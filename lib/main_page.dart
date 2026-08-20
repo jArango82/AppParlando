@@ -173,7 +173,7 @@ class _MainPageState extends State<MainPage>
               child: IndexedStack(
                 index: _selectedIndex,
                 children: [
-                  const HomePage(), // Página 0 - Inicio
+                  HomePage(isActive: _selectedIndex == 0), // Página 0 - Inicio
                   const CoursesScreen(), // Página 1 - Cursos
                   const DiagnosticsScreen(), // Página 2 - Diagnósticos
                   const GradesScreen(), // Página 3 - Notas
@@ -199,7 +199,7 @@ class _MainPageState extends State<MainPage>
             child: IndexedStack(
               index: _selectedIndex,
               children: [
-                const HomePage(), // Página 0 - Inicio
+                HomePage(isActive: _selectedIndex == 0), // Página 0 - Inicio
                 const CoursesScreen(), // Página 1 - Cursos
                 const DiagnosticsScreen(), // Página 2 - Diagnósticos
                 const GradesScreen(), // Página 3 - Notas

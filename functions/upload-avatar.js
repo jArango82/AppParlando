@@ -2,21 +2,20 @@ import { createClient } from 'npm:@insforge/sdk';
 
 /**
  * Edge Function: upload-avatar
- * 
+ *
  * Proxy para subir avatares al bucket de storage con permisos elevados.
- * La app Flutter envía el archivo como multipart/form-data con un campo 'file'
- * y un campo 'username' para nombrar el archivo.
- * 
- * Endpoint: POST /api/functions/upload-avatar
+ * La app Flutter envía JSON:
+ *   { username, fileBase64, contentType? }
+ *
+ * Endpoint: POST /functions/upload-avatar
  */
-export default async function(req) {
+export default async function (req) {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
 
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
@@ -29,29 +28,30 @@ export default async function(req) {
   }
 
   try {
-    const formData = await req.formData();
-    const file = formData.get('file');
-    const username = formData.get('username');
+    const body = await req.json();
+    const username = body?.username;
+    const fileBase64 = body?.fileBase64;
+    const contentType = body?.contentType || 'image/jpeg';
 
-    if (!file || !username) {
+    if (!username || !fileBase64) {
       return new Response(
-        JSON.stringify({ error: 'Missing file or username' }),
+        JSON.stringify({ error: 'Missing username or fileBase64' }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
+        },
       );
     }
 
-    const fileName = `${username.toLowerCase()}_avatar.jpg`;
+    const fileName = `${String(username).toLowerCase()}_avatar.jpg`;
+    const binary = Uint8Array.from(atob(fileBase64), (c) => c.charCodeAt(0));
+    const file = new File([binary], fileName, { type: contentType });
 
-    // Crear cliente con el SDK de InsForge usando el API_KEY (admin/service)
     const client = createClient({
       baseUrl: Deno.env.get('INSFORGE_BASE_URL'),
       anonKey: Deno.env.get('API_KEY'),
     });
 
-    // Subir archivo al bucket 'avatars' usando el SDK
     const { data, error } = await client.storage
       .from('avatars')
       .upload(fileName, file);
@@ -63,11 +63,10 @@ export default async function(req) {
         {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
+        },
       );
     }
 
-    // Retornar la URL del archivo subido
     return new Response(
       JSON.stringify({
         success: true,
@@ -78,7 +77,7 @@ export default async function(req) {
       {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      },
     );
   } catch (err) {
     console.error('Unexpected error:', err);
@@ -87,7 +86,7 @@ export default async function(req) {
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      },
     );
   }
 }

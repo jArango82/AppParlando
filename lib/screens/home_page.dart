@@ -1,58 +1,133 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/insforge_service.dart';
 import '../services/course_service.dart';
 import '../services/auth_service.dart';
+import '../services/student_service.dart';
+import '../services/student_messages_service.dart';
+import '../models/practice_exercise.dart';
 import 'course_details_screen.dart';
+import 'practice/practice_level_select_screen.dart';
 import '../widgets/custom_loading_indicator.dart';
 import '../theme_provider.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  /// True cuando la pestaña Inicio está visible (IndexedStack).
+  final bool isActive;
+
+  const HomePage({super.key, this.isActive = true});
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
+  static const Duration _pollInterval = Duration(seconds: 45);
+
   Future<Map<String, dynamic>>? _progressFuture;
   Map<String, dynamic>? _user;
   String? _profileImageUrl;
-
-  // Lista de consejos diarios para aprender inglés
-  static final List<String> _tips = [
-    '🎧 Escucha podcasts en inglés 10 minutos al día — ¡mejora tu comprensión rápidamente!',
-    '📝 Escribe 3 oraciones en inglés cada día para ganar confianza escribiendo.',
-    '🗣️ Practica hablando en voz alta, incluso solo — ¡tu cerebro aprende al escucharte!',
-    '📖 Lee libros infantiles en inglés primero — vocabulario simple, gramática real.',
-    '🎵 Aprende canciones en inglés — la música ayuda a retener vocabulario.',
-    '🔁 Repasa la lección de ayer antes de comenzar una nueva.',
-    '💬 Cambia el idioma de tu celular a inglés para aprender de forma pasiva.',
-    '📺 Ve series en inglés con subtítulos en inglés, no en español.',
-    '✍️ Lleva un cuaderno de vocabulario y repásalo cada domingo.',
-    '🌅 Estudia en la mañana — tu cerebro absorbe idiomas mejor temprano.',
-    '🤔 ¡No traduzcas palabra por palabra — piensa directamente en inglés!',
-    '👥 Encuentra un compañero de estudio y practiquen conversaciones juntos.',
-    '📱 Usa esta app al menos 15 minutos cada día para mejores resultados.',
-    '🎯 Ponte una meta específica: "Hoy voy a aprender 5 palabras nuevas."',
-  ];
+  String? _studentId;
+  List<Map<String, dynamic>> _messages = [];
+  bool _messagesLoading = true;
+  int _lastKnownMaxId = 0;
+  bool _appInForeground = true;
+  Timer? _pollTimer;
+  bool _pollInFlight = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadUser();
+  }
+
+  @override
+  void didUpdateWidget(covariant HomePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive != widget.isActive) {
+      _syncPolling();
+      // Al volver a Inicio, un check inmediato por si hubo mensajes nuevos
+      if (widget.isActive && _appInForeground) {
+        _pollCheck();
+      }
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final inForeground = state == AppLifecycleState.resumed;
+    if (_appInForeground == inForeground) return;
+    _appInForeground = inForeground;
+    _syncPolling();
+    if (inForeground && widget.isActive) {
+      _pollCheck();
+    }
+  }
+
+  @override
+  void dispose() {
+    _stopPolling();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  void _syncPolling() {
+    final shouldPoll =
+        widget.isActive && _appInForeground && _studentId != null;
+    if (shouldPoll) {
+      _startPolling();
+    } else {
+      _stopPolling();
+    }
+  }
+
+  void _startPolling() {
+    if (_pollTimer != null) return;
+    _pollTimer = Timer.periodic(_pollInterval, (_) => _pollCheck());
+  }
+
+  void _stopPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
+  }
+
+  Future<void> _pollCheck() async {
+    if (!mounted ||
+        !widget.isActive ||
+        !_appInForeground ||
+        _studentId == null ||
+        _pollInFlight) {
+      return;
+    }
+
+    _pollInFlight = true;
+    try {
+      final result = await StudentMessagesService().checkForNew(
+        studentId: _studentId!,
+        afterId: _lastKnownMaxId,
+      );
+      if (!mounted) return;
+      if (result['has_new'] == true) {
+        await _loadMessages(forceRefresh: true, showLoading: false);
+      }
+    } finally {
+      _pollInFlight = false;
+    }
   }
 
   Future<void> _loadUser() async {
     final user = await AuthService().getUserData();
     final prefs = await SharedPreferences.getInstance();
     String? savedImageUrl = prefs.getString('profile_image_url');
-    
+
     // Si no hay foto guardada localmente, buscar en InsForge
     if (savedImageUrl == null && user?['username'] != null) {
       savedImageUrl = await _fetchAvatarFromInsforge(user!['username']);
     }
-    
+
     if (mounted) {
       setState(() {
         _user = user;
@@ -61,6 +136,66 @@ class _HomePageState extends State<HomePage> {
       _progressFuture = CourseService().getCourseProgress();
       setState(() {});
     }
+
+    await _loadMessages(forceRefresh: true);
+  }
+
+  Future<void> _loadMessages({
+    bool forceRefresh = false,
+    bool showLoading = true,
+  }) async {
+    if (mounted && showLoading) {
+      setState(() => _messagesLoading = true);
+    }
+
+    try {
+      final profile = await StudentService().getStudentProfile();
+      final studentId = profile?['studentId']?.toString();
+      if (studentId == null || studentId.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _studentId = null;
+            _messages = [];
+            _messagesLoading = false;
+            _lastKnownMaxId = 0;
+          });
+        }
+        _syncPolling();
+        return;
+      }
+
+      final messages = await StudentMessagesService().getMessages(
+        studentId,
+        forceRefresh: forceRefresh,
+      );
+
+      var maxId = 0;
+      for (final m in messages) {
+        final id = int.tryParse(m['id']?.toString() ?? '') ?? 0;
+        if (id > maxId) maxId = id;
+      }
+
+      // Marcar como leídos en servidor sin quitar el highlight de esta sesión
+      final hasUnread = messages.any((m) => m['is_read'] != true);
+      if (hasUnread) {
+        StudentMessagesService().markAllAsRead(studentId);
+      }
+
+      if (mounted) {
+        setState(() {
+          _studentId = studentId;
+          _messages = messages;
+          _messagesLoading = false;
+          _lastKnownMaxId = maxId;
+        });
+      }
+      _syncPolling();
+    } catch (e) {
+      debugPrint('HomePage._loadMessages: $e');
+      if (mounted) {
+        setState(() => _messagesLoading = false);
+      }
+    }
   }
 
   /// Busca el avatar del usuario en InsForge Storage
@@ -68,17 +203,18 @@ class _HomePageState extends State<HomePage> {
     try {
       final insforge = InsforgeService();
       final String fileName = '${username.toLowerCase()}_avatar.jpg';
-      
+
       // Verificar si el archivo realmente existe
       final bool exists = await insforge.fileExists('avatars', fileName);
-      
+
       if (exists) {
         final String baseImageUrl = insforge.getPublicUrl('avatars', fileName);
-        final String finalImageUrl = '$baseImageUrl?t=${DateTime.now().millisecondsSinceEpoch}';
-        
+        final String finalImageUrl =
+            '$baseImageUrl?t=${DateTime.now().millisecondsSinceEpoch}';
+
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('profile_image_url', finalImageUrl);
-        
+
         return finalImageUrl;
       }
       return null;
@@ -86,12 +222,6 @@ class _HomePageState extends State<HomePage> {
       debugPrint('Debug: Error buscando avatar en InsForge: $e');
       return null;
     }
-  }
-
-  String _getDailyTip() {
-    final dayOfYear =
-        DateTime.now().difference(DateTime(DateTime.now().year, 1, 1)).inDays;
-    return _tips[dayOfYear % _tips.length];
   }
 
   String _getGreeting() {
@@ -114,6 +244,16 @@ class _HomePageState extends State<HomePage> {
     return quotes[DateTime.now().day % quotes.length];
   }
 
+  String _formatMessageDate(String? raw) {
+    if (raw == null || raw.isEmpty) return '';
+    try {
+      final d = DateTime.parse(raw);
+      return DateFormat('dd/MM/yyyy HH:mm').format(d);
+    } catch (_) {
+      return raw;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_user == null) {
@@ -125,14 +265,13 @@ class _HomePageState extends State<HomePage> {
 
     final String firstName =
         _user!['fullname']?.split(' ').first ?? 'Estudiante';
-    final dailyTip = _getDailyTip();
 
     return Scaffold(
       backgroundColor: context.bgScaffold,
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
-            _loadUser();
+            await _loadUser();
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -151,7 +290,8 @@ class _HomePageState extends State<HomePage> {
                     FutureBuilder<Map<String, dynamic>>(
                       future: _progressFuture,
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
                           return _buildShimmerCard(context);
                         } else if (snapshot.hasError || !snapshot.hasData) {
                           return const SizedBox.shrink();
@@ -161,13 +301,13 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 24),
 
-                    // ── CONSEJO DEL DÍA ──────────────────
-                    _buildDailyTip(dailyTip, context),
+                    // ── MENSAJES DEL ASESOR ──────────────
+                    _buildMessagesSection(context),
                     const SizedBox(height: 24),
 
                     // ── PRÁCTICA RÁPIDA ──────────────────
                     _buildSectionTitle(
-                        'Qué aprenderás', Icons.bolt_rounded, context),
+                        'Práctica rápida', Icons.bolt_rounded, context),
                     const SizedBox(height: 12),
                     _buildQuickPracticeGrid(context),
                     const SizedBox(height: 24),
@@ -456,66 +596,243 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ── CONSEJO DEL DÍA ────────────────────────────────────────
+  // ── MENSAJES DEL ASESOR ────────────────────────────────────
 
-  Widget _buildDailyTip(String tip, BuildContext context) {
+  Widget _buildMessagesSection(BuildContext context) {
+    const accent = Color(0xFF2A60E4);
+    final preview = _messages.take(3).toList();
+    final hasMore = _messages.length > 3;
+
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: context.isDarkMode
-            ? const Color(0xFF2A1C11)
-            : const Color(0xFFFFF7ED),
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE67E22).withValues(alpha: 0.15)),
+        border: Border.all(color: context.borderColor),
         boxShadow: [
           BoxShadow(
-            color: context.isDarkMode
-                ? Colors.transparent
-                : const Color(0xFFE67E22).withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
-          )
+          ),
         ],
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-                color: context.cardColor,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFE67E22).withValues(alpha: 0.1),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  )
-                ]),
-            child: const Text('💡', style: TextStyle(fontSize: 18)),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.mail_rounded, color: accent, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Mensajes',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    color: context.textColor,
+                  ),
+                ),
+              ),
+              if (!_messagesLoading && _messages.isNotEmpty)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '${_messages.length}',
+                    style: const TextStyle(
+                      color: accent,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+            ],
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Tip del Día',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14,
-                        color: Color(0xFFE67E22))),
-                const SizedBox(height: 6),
-                Text(tip,
-                    style: TextStyle(
-                        color: context.textColor,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        height: 1.5)),
-              ],
+          const SizedBox(height: 14),
+          if (_messagesLoading)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Center(
+                child: SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: accent.withValues(alpha: 0.7),
+                  ),
+                ),
+              ),
+            )
+          else if (_messages.isEmpty)
+            Text(
+              'No tienes mensajes por ahora.',
+              style: TextStyle(
+                color: context.subtitleColor,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                height: 1.4,
+              ),
+            )
+          else ...[
+            ...preview.map((m) => _buildMessageItem(m, context)),
+            if (hasMore) ...[
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => _showAllMessages(context),
+                  style: TextButton.styleFrom(
+                    foregroundColor: accent,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
+                  child: Text(
+                    'Ver todos (${_messages.length})',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessageItem(Map<String, dynamic> message, BuildContext context) {
+    final content = message['content']?.toString() ?? '';
+    final author = message['author']?.toString() ?? 'Asesor';
+    final date = _formatMessageDate(message['created_at']?.toString());
+    final isUnread = message['is_read'] != true;
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isUnread
+            ? const Color(0xFF2A60E4).withValues(alpha: 0.06)
+            : (context.isDarkMode
+                ? Colors.white.withValues(alpha: 0.03)
+                : Colors.grey.withValues(alpha: 0.05)),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isUnread
+              ? const Color(0xFF2A60E4).withValues(alpha: 0.18)
+              : context.borderColor,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  author,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: context.textColor,
+                  ),
+                ),
+              ),
+              if (date.isNotEmpty)
+                Text(
+                  date,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: context.subtitleColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            content,
+            style: TextStyle(
+              color: context.textColor,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              height: 1.45,
             ),
           ),
         ],
       ),
+    );
+  }
+
+  void _showAllMessages(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: context.cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.65,
+          minChildSize: 0.4,
+          maxChildSize: 0.92,
+          builder: (context, scrollController) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: context.borderColor,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Todos los mensajes',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: context.textColor,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: ListView.builder(
+                      controller: scrollController,
+                      itemCount: _messages.length,
+                      itemBuilder: (context, index) {
+                        return _buildMessageItem(_messages[index], context);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -535,6 +852,36 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  String _detectPracticeLevel(Map<String, dynamic>? course) {
+    if (course == null) return 'A1';
+    final combined = '${course['fullname'] ?? ''} ${course['shortname'] ?? ''}';
+    if (combined.contains('B2')) return 'B2';
+    if (combined.contains('B1')) return 'B1';
+    if (combined.contains('A2')) return 'A2';
+    return 'A1';
+  }
+
+  Future<void> _openPractice(PracticeCategory category) async {
+    String? suggested;
+    try {
+      final data =
+          await (_progressFuture ?? CourseService().getCourseProgress());
+      suggested =
+          _detectPracticeLevel(data['course'] as Map<String, dynamic>?);
+    } catch (_) {
+      suggested = null;
+    }
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PracticeLevelSelectScreen(
+          category: category,
+          suggestedLevel: suggested,
+        ),
+      ),
+    );
+  }
+
   // ── GRID DE PRÁCTICA RÁPIDA ────────────────────────────────
 
   Widget _buildQuickPracticeGrid(BuildContext context) {
@@ -543,25 +890,29 @@ class _HomePageState extends State<HomePage> {
         'icon': Icons.menu_book_rounded,
         'title': 'Gramática',
         'subtitle': 'Reglas y tiempos',
-        'color': const Color(0xFF2A60E4)
+        'color': const Color(0xFF2A60E4),
+        'category': PracticeCategory.grammar,
       },
       {
         'icon': Icons.headphones_rounded,
         'title': 'Escucha',
-        'subtitle': 'Ejercicios de audio',
-        'color': const Color(0xFF1FAB5E)
+        'subtitle': 'Próximamente',
+        'color': const Color(0xFF1FAB5E),
+        'category': null,
       },
       {
         'icon': Icons.edit_rounded,
         'title': 'Escritura',
         'subtitle': 'Práctica escrita',
-        'color': const Color(0xFFE67E22)
+        'color': const Color(0xFFE67E22),
+        'category': PracticeCategory.writing,
       },
       {
         'icon': Icons.quiz_rounded,
         'title': 'Vocabulario',
         'subtitle': 'Aprende palabras',
-        'color': const Color(0xFF8E44AD)
+        'color': const Color(0xFF8E44AD),
+        'category': PracticeCategory.vocabulary,
       },
     ];
 
@@ -569,67 +920,82 @@ class _HomePageState extends State<HomePage> {
 
     return GridView.builder(
       shrinkWrap: true,
-      clipBehavior: Clip.none, // Evita que las sombras se recorten y generen bugs visuales
+      clipBehavior: Clip.none,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: isWide ? 4 : 2,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: isWide ? 1.3 : 1.15, // Ajustado para dar un poco más de altura vertical
+        childAspectRatio: isWide ? 1.3 : 1.15,
       ),
       itemCount: practices.length,
       itemBuilder: (context, index) {
         final p = practices[index];
         final color = p['color'] as Color;
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: context.cardColor,
+        final title = p['title'] as String;
+        final category = p['category'] as PracticeCategory?;
+        final enabled = category != null;
+
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: context.borderColor),
-            boxShadow: [
-              if (!context.isDarkMode) // Solo mostramos sombra en modo claro para evitar bugs oscuros
-                BoxShadow(
-                    color: context.shadowColor,
-                    blurRadius: 10,
-                    offset: const Offset(0, 4)),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
+            onTap: enabled ? () => _openPractice(category) : null,
+            child: Opacity(
+              opacity: enabled ? 1 : 0.55,
+              child: Container(
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  color: context.cardColor,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: context.borderColor),
+                  boxShadow: [
+                    if (!context.isDarkMode)
+                      BoxShadow(
+                          color: context.shadowColor,
+                          blurRadius: 10,
+                          offset: const Offset(0, 4)),
+                  ],
                 ),
-                child: Icon(p['icon'] as IconData, color: color, size: 22),
-              ),
-              const SizedBox(height: 12),
-              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(p['title'] as String,
-                        style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 14,
-                            color: context.textColor)),
-                    const SizedBox(height: 2),
-                    Text(p['subtitle'] as String,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: context.subtitleColor)),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child:
+                          Icon(p['icon'] as IconData, color: color, size: 22),
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(title,
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14,
+                                  color: context.textColor)),
+                          const SizedBox(height: 2),
+                          Text(p['subtitle'] as String,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: context.subtitleColor)),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
-            ],
+            ),
           ),
         );
       },

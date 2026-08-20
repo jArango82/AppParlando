@@ -236,11 +236,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
        if (mounted) {
          setState(() {
            _isUploadingImage = false;
-           // En caso de error, podríamos volver _localImageFile a null o dejarlo.
          });
+         final String raw = e.toString();
+         final String message = raw.contains('Deno Deploy Classic') ||
+                 raw.contains('upload-avatar está caída')
+             ? 'No se pudo subir la foto: la función de InsForge está fuera de servicio. Actualiza el proyecto a v2.2.2 y vuelve a desplegar upload-avatar.'
+             : 'Error al subir la imagen. Intenta de nuevo.';
          ScaffoldMessenger.of(context).showSnackBar(
            SnackBar(
-             content: Text('Error al subir la imagen: $e'),
+             content: Text(message),
              backgroundColor: Colors.red,
            ),
          );
@@ -541,7 +545,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     
                       const SizedBox(height: 20),
                       _buildSectionTitle('Información Financiera', context),
-                      _buildFinancialCard(user, fMoney, context),
+                      _buildFinancialCard(user, fMoney, fDate, context),
     
                       const SizedBox(height: 20),
     
@@ -659,129 +663,447 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Tarjeta especial con gradiente para datos financieros
-  Widget _buildFinancialCard(Map<String, dynamic> user,
-      String Function(dynamic) fMoney, BuildContext context) {
-    String method = user['paymentMethod'] ?? 'N/A';
-    String total = fMoney(user['totalAmount']);
+  // Tarjeta financiera: resumen + planes registrados (solo lectura)
+  Widget _buildFinancialCard(
+    Map<String, dynamic> user,
+    String Function(dynamic) fMoney,
+    String Function(String?) fDate,
+    BuildContext context,
+  ) {
+    final List plans = user['paymentPlans'] is List
+        ? user['paymentPlans'] as List
+        : const [];
 
-    // Si tenemos desglose de cuotas calculado por el servicio, lo mostramos
+    // Totales agregados de todos los planes (o fallback legacy)
+    double aggregateTotal = 0;
+    double aggregatePaid = 0;
+    int aggregatePending = 0;
+    int paidQuotas = 0;
+    int totalQuotas = 0;
+    if (plans.isNotEmpty) {
+      for (final p in plans) {
+        if (p is! Map) continue;
+        aggregateTotal +=
+            double.tryParse(p['totalAmount']?.toString() ?? '0') ?? 0;
+        aggregatePaid +=
+            double.tryParse(p['paidAmount']?.toString() ?? '0') ?? 0;
+        aggregatePending += (p['pendingCount'] as int?) ?? 0;
+        final method = (p['paymentMethod'] ?? '').toString().toLowerCase();
+        if (method.contains('cuota')) {
+          paidQuotas += (p['paidQuotas'] as int?) ?? 0;
+          totalQuotas += (p['totalQuotas'] as int?) ?? 0;
+        }
+      }
+    } else {
+      aggregateTotal =
+          double.tryParse(user['totalAmount']?.toString() ?? '0') ?? 0;
+      final status = user['computed_payment_status'];
+      if (status is Map) {
+        aggregatePaid =
+            double.tryParse(status['paidAmount']?.toString() ?? '0') ?? 0;
+        paidQuotas = (status['paidQuotas'] as int?) ?? 0;
+        totalQuotas = (status['totalQuotas'] as int?) ?? 0;
+      }
+    }
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: context.cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: context.borderColor),
-        boxShadow: [
-          BoxShadow(
-            color: context.shadowColor,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    final bool allPaid =
+        plans.isNotEmpty && plans.every((p) => p is Map && p['isFullyPaid'] == true);
+    final double quotaProgress =
+        totalQuotas > 0 ? (paidQuotas / totalQuotas).clamp(0.0, 1.0) : 0.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: context.cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: context.borderColor),
+            boxShadow: [
+              BoxShadow(
+                color: context.shadowColor,
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Estado de Pago',
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Estado de Pago',
+                      style: TextStyle(
+                          color: context.subtitleColor,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600)),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: (allPaid || aggregatePending == 0
+                              ? const Color(0xFF1FAB5E)
+                              : const Color(0xFFF59E0B))
+                          .withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      plans.isEmpty
+                          ? (user['paymentMethod'] ?? 'N/A')
+                              .toString()
+                              .toUpperCase()
+                          : (aggregatePending == 0
+                              ? 'AL DÍA'
+                              : '$aggregatePending PENDIENTE(S)'),
+                      style: TextStyle(
+                          color: allPaid || aggregatePending == 0
+                              ? const Color(0xFF1FAB5E)
+                              : const Color(0xFFF59E0B),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 11),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                fMoney(aggregateTotal),
+                style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w800,
+                    color: context.textColor),
+              ),
+              if (aggregateTotal > 0) ...[
+                const SizedBox(height: 6),
+                Text(
+                  'Pagado: ${fMoney(aggregatePaid)}',
                   style: TextStyle(
                       color: context.subtitleColor,
                       fontSize: 13,
-                      fontWeight: FontWeight.w600)),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1FAB5E).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
+                      fontWeight: FontWeight.w600),
                 ),
-                child: Text(
-                  method.toUpperCase(),
-                  style: const TextStyle(
-                      color: Color(0xFF1FAB5E),
-                      fontWeight: FontWeight.w800,
-                      fontSize: 11),
+              ],
+              if (totalQuotas > 0) ...[
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Cuotas completadas',
+                        style: TextStyle(
+                            color: context.subtitleColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600)),
+                    Text('$paidQuotas de $totalQuotas',
+                        style: TextStyle(
+                            color: context.textColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: quotaProgress,
+                    backgroundColor: context.isDarkMode
+                        ? Colors.grey[800]
+                        : Colors.grey.withValues(alpha: 0.12),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      allPaid || paidQuotas == totalQuotas
+                          ? const Color(0xFF1FAB5E)
+                          : const Color(0xFF2A60E4),
+                    ),
+                    minHeight: 6,
+                  ),
+                ),
+              ],
+              if (allPaid) ...[
+                const SizedBox(height: 12),
+                const Row(
+                  children: [
+                    Icon(Icons.check_circle_rounded,
+                        color: Color(0xFF1FAB5E), size: 18),
+                    SizedBox(width: 8),
+                    Text('Pagado en su totalidad',
+                        style: TextStyle(
+                            color: Color(0xFF1FAB5E),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (plans.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Planes registrados',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: context.subtitleColor,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...plans.whereType<Map>().map((plan) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _buildPaymentPlanCard(
+                  Map<String, dynamic>.from(plan),
+                  fMoney,
+                  fDate,
+                  context,
+                ),
+              )),
+        ] else
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text(
+              'No hay planes de pago registrados.',
+              style: TextStyle(color: context.subtitleColor, fontSize: 13),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildPaymentPlanCard(
+    Map<String, dynamic> plan,
+    String Function(dynamic) fMoney,
+    String Function(String?) fDate,
+    BuildContext context,
+  ) {
+    final String method = (plan['paymentMethod'] ?? '').toString();
+    final bool isContado = method.toLowerCase().contains('contado');
+    final bool isFullyPaid = plan['isFullyPaid'] == true;
+    final int pending = (plan['pendingCount'] as int?) ?? 0;
+    final List quotas = plan['quotas'] is List ? plan['quotas'] as List : [];
+    final Color methodColor =
+        isContado ? const Color(0xFF1FAB5E) : const Color(0xFF7C3AED);
+    final Color statusColor =
+        isFullyPaid ? const Color(0xFF1FAB5E) : const Color(0xFFF59E0B);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: context.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.borderColor),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          childrenPadding:
+              const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          iconColor: context.subtitleColor,
+          collapsedIconColor: context.subtitleColor,
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: methodColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      isContado ? 'CONTADO' : 'CUOTAS',
+                      style: TextStyle(
+                        color: methodColor,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 10,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      isFullyPaid
+                          ? 'Al día'
+                          : '$pending pendiente${pending == 1 ? '' : 's'}',
+                      style: TextStyle(
+                        color: statusColor,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                plan['concept']?.toString() ?? 'Plan de pago',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: context.textColor,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${fMoney(plan['totalAmount'])}'
+                '${plan['createdAt'] != null && plan['createdAt'].toString().isNotEmpty ? ' · ${fDate(plan['createdAt']?.toString())}' : ''}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: context.subtitleColor,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            total,
-            style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.w800,
-                color: context.textColor),
+          children: [
+            if (isContado)
+              _buildContadoPlanBody(plan, fMoney, context)
+            else if (quotas.isEmpty)
+              Text(
+                'Sin cuotas registradas.',
+                style: TextStyle(color: context.subtitleColor, fontSize: 13),
+              )
+            else
+              ...quotas.whereType<Map>().map((q) => _buildQuotaRow(
+                    Map<String, dynamic>.from(q),
+                    fMoney,
+                    fDate,
+                    context,
+                  )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContadoPlanBody(
+    Map<String, dynamic> plan,
+    String Function(dynamic) fMoney,
+    BuildContext context,
+  ) {
+    final bool paid = plan['contadoPaid'] == true;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: paid
+            ? const Color(0xFF1FAB5E).withValues(alpha: 0.08)
+            : const Color(0xFFF59E0B).withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            paid ? Icons.check_circle_rounded : Icons.schedule_rounded,
+            color: paid ? const Color(0xFF1FAB5E) : const Color(0xFFF59E0B),
+            size: 22,
           ),
-          const SizedBox(height: 16),
-
-          // Lógica visual para cuotas vs contado
-          if (user['computed_payment_status'] != null) ...[
-            Builder(builder: (context) {
-              final status = user['computed_payment_status'];
-              final int paid = status['paidQuotas'] ?? 0;
-              final int totalQ = status['totalQuotas'] ?? 0;
-              if (totalQ > 0) {
-                final double progressVal = totalQ > 0 ? paid / totalQ : 0;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Cuotas completadas',
-                            style: TextStyle(
-                                color: context.subtitleColor,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600)),
-                        Text('$paid de $totalQ',
-                            style: TextStyle(
-                                color: context.textColor,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700)),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: progressVal,
-                        backgroundColor: context.isDarkMode
-                            ? Colors.grey[800]
-                            : Colors.grey.withValues(alpha: 0.1),
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                            Color(0xFF2A60E4)),
-                        minHeight: 6,
-                      ),
-                    ),
-                  ],
-                );
-              }
-              return const SizedBox.shrink();
-            }),
-          ] else if (method.toLowerCase().contains('cuota'))
-            Text('Pago a cuotas activo',
-                style: TextStyle(color: context.subtitleColor, fontSize: 13)),
-
-          if (method.toLowerCase().contains('contado') ||
-              (user['computed_payment_status']?['isFullyPaid'] == true))
-            const Row(
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.check_circle_rounded,
-                    color: Color(0xFF1FAB5E), size: 18),
-                SizedBox(width: 8),
-                Text('Pagado en su totalidad',
-                    style: TextStyle(
-                        color: Color(0xFF1FAB5E),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600)),
+                Text(
+                  paid ? 'Pago recibido' : 'Pago pendiente',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: context.textColor,
+                  ),
+                ),
+                Text(
+                  fMoney(plan['totalAmount']),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: context.subtitleColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuotaRow(
+    Map<String, dynamic> quota,
+    String Function(dynamic) fMoney,
+    String Function(String?) fDate,
+    BuildContext context,
+  ) {
+    final bool paid = quota['paid'] == true;
+    final String rawDate = (quota['date'] ?? quota['day'] ?? '').toString();
+    final String dateLabel =
+        rawDate.isEmpty ? 'Sin fecha' : fDate(rawDate);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: paid
+            ? const Color(0xFF1FAB5E).withValues(alpha: 0.06)
+            : (context.isDarkMode
+                ? Colors.white.withValues(alpha: 0.04)
+                : Colors.grey.withValues(alpha: 0.06)),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: paid
+              ? const Color(0xFF1FAB5E).withValues(alpha: 0.2)
+              : context.borderColor,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            paid ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+            size: 20,
+            color: paid ? const Color(0xFF1FAB5E) : context.subtitleColor,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Cuota #${quota['number'] ?? ''}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: context.textColor,
+                  ),
+                ),
+                Text(
+                  dateLabel,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: context.subtitleColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            fMoney(quota['amount']),
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              color: context.textColor,
+            ),
+          ),
         ],
       ),
     );

@@ -54,6 +54,7 @@ class StudentService {
       if (student != null) {
         // Procesamos la información de pagos y cuotas para facilitar su visualización en la UI
         student['computed_payment_status'] = _computePaymentStatus(student);
+        student['paymentPlans'] = _normalizePaymentPlans(student);
         _cachedStudentData = student as Map<String, dynamic>;
         _lastFetchTime = DateTime.now();
         return _cachedStudentData;
@@ -107,6 +108,102 @@ class StudentService {
       'paidAmount': paidAmount,
       'totalQuotas': totalQuotas,
       'paidQuotas': paidQuotas,
+      'isFullyPaid': isFullyPaid,
+    };
+  }
+
+  /// Normaliza los planes de pago de Estado Estudiante para solo lectura en la app.
+  /// Si la API no trae `paymentPlans` pero sí datos legacy, arma un plan sintético.
+  List<Map<String, dynamic>> _normalizePaymentPlans(Map<String, dynamic> student) {
+    final List<Map<String, dynamic>> plans = [];
+
+    if (student['paymentPlans'] != null && student['paymentPlans'] is List) {
+      for (final raw in student['paymentPlans'] as List) {
+        if (raw is! Map) continue;
+        plans.add(_enrichPlan(Map<String, dynamic>.from(raw)));
+      }
+    }
+
+    // Fallback: matrícula legacy sin planes migrados aún
+    if (plans.isEmpty &&
+        (student['paymentMethod'] != null &&
+            student['paymentMethod'].toString().trim().isNotEmpty)) {
+      plans.add(_enrichPlan({
+        'id': 0,
+        'concept': 'Matrícula / Inscripción',
+        'paymentMethod': student['paymentMethod'],
+        'totalAmount': student['totalAmount'] ?? 0,
+        'contadoPaid': student['contadoPaid'] == true ||
+            student['contadoPaid'] == 1 ||
+            student['contadoPaid'] == 'true',
+        'quotas': student['quotas'] is List ? student['quotas'] : [],
+        'createdAt': student['registrationDate'],
+      }));
+    }
+
+    return plans;
+  }
+
+  Map<String, dynamic> _enrichPlan(Map<String, dynamic> plan) {
+    final String method = (plan['paymentMethod'] ?? '').toString();
+    final double totalAmount =
+        double.tryParse(plan['totalAmount']?.toString() ?? '0') ?? 0;
+    final bool isContado = method.toLowerCase().contains('contado');
+    final List quotas =
+        plan['quotas'] is List ? List.from(plan['quotas'] as List) : [];
+
+    int paidQuotas = 0;
+    double paidAmount = 0;
+    final List<Map<String, dynamic>> normalizedQuotas = [];
+
+    for (var i = 0; i < quotas.length; i++) {
+      final q = quotas[i];
+      if (q is! Map) continue;
+      final bool isPaid =
+          q['paid'] == true || q['paid'] == 'true' || q['paid'] == 1;
+      final double amount = double.tryParse(q['amount']?.toString() ?? '0') ?? 0;
+      if (isPaid) {
+        paidQuotas++;
+        paidAmount += amount;
+      }
+      normalizedQuotas.add({
+        'number': q['number'] ?? (i + 1),
+        'day': q['day']?.toString() ?? '',
+        'date': (q['date'] ?? q['day'])?.toString() ?? '',
+        'amount': amount,
+        'paid': isPaid,
+      });
+    }
+
+    final bool contadoPaid = plan['contadoPaid'] == true ||
+        plan['contadoPaid'] == 1 ||
+        plan['contadoPaid'] == 'true';
+
+    if (isContado) {
+      paidAmount = contadoPaid ? totalAmount : 0;
+    }
+
+    final int pendingCount = isContado
+        ? (contadoPaid ? 0 : 1)
+        : (normalizedQuotas.length - paidQuotas);
+    final bool isFullyPaid = isContado
+        ? contadoPaid
+        : (normalizedQuotas.isNotEmpty && pendingCount == 0);
+
+    return {
+      'id': plan['id'],
+      'concept': (plan['concept'] ?? 'Plan de pago').toString(),
+      'paymentMethod': method.isEmpty ? 'N/A' : method,
+      'totalAmount': totalAmount,
+      'contadoPaid': contadoPaid,
+      'quotas': normalizedQuotas,
+      'comments': plan['comments'] ?? '',
+      'createdAt': plan['createdAt']?.toString(),
+      'updatedAt': plan['updatedAt']?.toString(),
+      'paidAmount': paidAmount,
+      'paidQuotas': paidQuotas,
+      'totalQuotas': normalizedQuotas.length,
+      'pendingCount': pendingCount,
       'isFullyPaid': isFullyPaid,
     };
   }
