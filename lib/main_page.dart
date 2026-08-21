@@ -78,7 +78,7 @@ class _MainPageState extends State<MainPage> {
             ...List.generate(_tabs.length, (index) {
               final selected = _selectedIndex == index;
               final color =
-                  selected ? LimpioTokens.brand : context.subtitleColor;
+                  selected ? context.brandColor : context.subtitleColor;
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: InkWell(
@@ -90,7 +90,7 @@ class _MainPageState extends State<MainPage> {
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     decoration: BoxDecoration(
                       color: selected
-                          ? LimpioTokens.brand.withValues(alpha: 0.12)
+                          ? context.brandSoft
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -138,12 +138,16 @@ class _MainPageState extends State<MainPage> {
           child: Container(
             height: 64,
             decoration: BoxDecoration(
-              color: context.cardColor.withValues(alpha: 0.94),
+              color: context.isDarkMode
+                  ? LimpioTokens.darkElevated.withValues(alpha: 0.96)
+                  : context.cardColor.withValues(alpha: 0.94),
               borderRadius: BorderRadius.circular(28),
               border: Border.all(color: context.borderColor),
               boxShadow: [
                 BoxShadow(
-                  color: LimpioTokens.brand.withValues(alpha: 0.12),
+                  color: context.isDarkMode
+                      ? Colors.black.withValues(alpha: 0.45)
+                      : LimpioTokens.brand.withValues(alpha: 0.12),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
@@ -153,7 +157,7 @@ class _MainPageState extends State<MainPage> {
               children: List.generate(_tabs.length, (i) {
                 final selected = _selectedIndex == i;
                 final color =
-                    selected ? LimpioTokens.brand : context.subtitleColor;
+                    selected ? context.brandColor : context.subtitleColor;
                 return Expanded(
                   child: InkWell(
                     onTap: () => _onItemTapped(i),
@@ -167,7 +171,7 @@ class _MainPageState extends State<MainPage> {
                               horizontal: 10, vertical: 3),
                           decoration: BoxDecoration(
                             color: selected
-                                ? LimpioTokens.brand.withValues(alpha: 0.12)
+                                ? context.brandSoft
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(12),
                           ),

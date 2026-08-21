@@ -11,6 +11,7 @@ import '../services/course_service.dart';
 import '../services/badge_service.dart';
 import '../home_screen.dart';
 import '../widgets/custom_loading_indicator.dart';
+import '../widgets/limpio_card.dart';
 import '../theme_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -227,7 +228,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Foto de perfil actualizada correctamente.'),
-            backgroundColor: Color(0xFF1FAB5E),
+            backgroundColor: LimpioTokens.success,
           ),
         );
       }
@@ -345,236 +346,89 @@ class _ProfileScreenState extends State<ProfileScreen> {
               iconTheme: IconThemeData(color: context.textColor),
             ),
             body: Center(
-              child: Container(
+              child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 600),
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                  padding:
+                      const EdgeInsets.fromLTRB(20, 8, 20, 40),
                   child: Column(
                     children: [
-                      // 1. Encabezado del Perfil (Foto + Nombre + Rol)
-                      Center(
-                        child: Stack(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: context.cardColor,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: context.borderColor),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: context.shadowColor,
-                                    blurRadius: 15,
-                                    offset: const Offset(0, 5),
-                                  ),
-                                ],
-                              ),
-                              child: CircleAvatar(
-                                radius: 56,
-                                backgroundColor: context.bgScaffold,
-                                backgroundImage: _localImageFile != null
-                                    ? FileImage(File(_localImageFile!))
-                                    : (user['imageUrl'] != null
-                                        ? NetworkImage(user['imageUrl'])
-                                        : null) as ImageProvider?,
-                                child: (_localImageFile == null &&
-                                        user['imageUrl'] == null)
-                                    ? Text(
-                                        fullName.isNotEmpty
-                                            ? fullName[0].toUpperCase()
-                                            : 'E',
-                                        style: const TextStyle(
-                                            fontSize: 36,
-                                            fontWeight: FontWeight.w800,
-                                            color: Color(0xFF2A60E4)))
-                                    : null,
-                              ),
-                            ),
-                            if (_isUploadingImage)
-                              Positioned.fill(
-                                child: Container(
-                                  decoration: const BoxDecoration(
-                                    color: Colors.black45,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Center(
-                                    child: CircularProgressIndicator(
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            // Botón flotante para editar foto
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: GestureDetector(
-                                onTap: _isUploadingImage ? null : _pickImage,
-                                child: Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: _isUploadingImage ? Colors.grey : const Color(0xFF2A60E4),
-                                    shape: BoxShape.circle,
-                                    border:
-                                        Border.all(color: Colors.white, width: 3),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: const Color(0xFF2A60E4)
-                                            .withValues(alpha: 0.3),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 3),
-                                      ),
-                                    ],
-                                  ),
-                                  child: const Icon(Icons.camera_alt_rounded,
-                                      color: Colors.white, size: 16),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                      _buildProfileHero(
+                        context,
+                        fullName: fullName,
+                        courseType: courseType,
+                        userName: (user['userName'] ?? user['username'] ?? '')
+                            .toString(),
+                        imageUrl: user['imageUrl']?.toString(),
                       ),
-                      const SizedBox(height: 20),
-                      Text(
-                        fullName,
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: context.textColor,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2A60E4).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          courseType,
-                          style: const TextStyle(
-                            color: Color(0xFF2A60E4),
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-    
-                      // Insignias por nivel
                       const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _buildLevelBadge('A1', const Color(0xFF2A60E4), context),
-                          const SizedBox(width: 10),
-                          _buildLevelBadge('A2', const Color(0xFF1FAB5E), context),
-                          const SizedBox(width: 10),
-                          _buildLevelBadge('B1', const Color(0xFFE67E22), context),
-                          const SizedBox(width: 10),
-                          _buildLevelBadge('B2', const Color(0xFF8E44AD), context),
-                        ],
-                      ),
-    
-                      const SizedBox(height: 30),
-    
-                      _buildSectionTitle('Ajustes de la App', context),
-                      _buildInfoCard([
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.purple.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(Icons.dark_mode_rounded,
-                                    size: 20, color: Colors.purple),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Text('Modo Oscuro',
-                                    style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: context.textColor)),
-                              ),
-                              Switch(
-                                value: isDarkMode,
-                                onChanged: (value) async {
-                                  await ThemeProvider.setDarkMode(value);
-                                },
-                                activeThumbColor: const Color(0xFF2A60E4),
-                                inactiveThumbColor: Colors.grey[400],
-                                inactiveTrackColor:
-                                    Colors.grey.withValues(alpha: 0.2),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ], context),
-    
+                      _buildBadgesCard(context),
                       const SizedBox(height: 20),
-    
-                      // 2. Tarjetas de Información Detallada
-                      _buildSectionTitle('Información Personal', context),
+                      _buildSectionTitle('Apariencia', context),
+                      _buildThemeToggleCard(context, isDarkMode),
+                      const SizedBox(height: 20),
+                      _buildSectionTitle('Información personal', context),
                       _buildInfoCard([
-                        _buildInfoRow(Icons.badge, 'Documento',
-                            document.isEmpty ? 'N/A' : document, context),
-                        _buildInfoRow(Icons.cake, 'Nacimiento',
-                            fDate(user['dateOfBirth']), context),
-                        _buildInfoRow(Icons.person, 'Acudiente',
-                            user['guardianName'] ?? 'N/A', context),
-                        _buildInfoRow(Icons.phone, 'Contacto',
+                        _buildInfoRow(Icons.badge_rounded, 'Documento',
+                            document.isEmpty ? 'N/A' : document, context,
+                            showDivider: true),
+                        _buildInfoRow(Icons.cake_rounded, 'Nacimiento',
+                            fDate(user['dateOfBirth']), context,
+                            showDivider: true),
+                        _buildInfoRow(Icons.person_rounded, 'Acudiente',
+                            user['guardianName'] ?? 'N/A', context,
+                            showDivider: true),
+                        _buildInfoRow(Icons.phone_rounded, 'Contacto',
                             user['contactNumber'] ?? 'N/A', context),
                       ], context),
-    
                       const SizedBox(height: 20),
-                      _buildSectionTitle('Información Académica', context),
+                      _buildSectionTitle('Información académica', context),
                       _buildInfoCard([
-                        _buildInfoRow(Icons.school, 'Tipo de Curso',
-                            user['courseType'] ?? 'N/A', context),
-                        _buildInfoRow(Icons.calendar_today, 'Inicio Contrato',
-                            fDate(user['startDate']), context),
-                        _buildInfoRow(Icons.event_busy, 'Fin Contrato',
+                        _buildInfoRow(Icons.school_rounded, 'Tipo de curso',
+                            user['courseType'] ?? 'N/A', context,
+                            showDivider: true),
+                        _buildInfoRow(
+                            Icons.calendar_today_rounded,
+                            'Inicio contrato',
+                            fDate(user['startDate']),
+                            context,
+                            showDivider: true),
+                        _buildInfoRow(Icons.event_busy_rounded, 'Fin contrato',
                             fDate(user['endDate']), context),
                       ], context),
-    
                       const SizedBox(height: 20),
-                      _buildSectionTitle('Información Financiera', context),
+                      _buildSectionTitle('Información financiera', context),
                       _buildFinancialCard(user, fMoney, fDate, context),
-    
-                      const SizedBox(height: 20),
-    
-                      // Botón de Cerrar Sesión
+                      const SizedBox(height: 24),
                       SizedBox(
                         width: double.infinity,
-                        child: ElevatedButton.icon(
+                        child: OutlinedButton.icon(
                           onPressed: _logout,
-                          icon:
-                              const Icon(Icons.logout_rounded, color: Colors.white),
-                          label: const Text('Cerrar Sesión',
-                              style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red[600],
-                            foregroundColor: Colors.white,
+                          icon: Icon(Icons.logout_rounded,
+                              color: context.dangerColor),
+                          label: Text(
+                            'Cerrar sesión',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: context.dangerColor,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: context.dangerColor,
+                            side: BorderSide(
+                              color: context.dangerColor.withValues(alpha: 0.45),
+                            ),
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            elevation: 0,
+                            backgroundColor:
+                                context.dangerColor.withValues(alpha: 0.08),
                           ),
                         ),
                       ),
-    
-                      const SizedBox(height: 40), // Espacio inferior para scroll
                     ],
                   ),
                 ),
@@ -585,82 +439,359 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
   }
 
-  // Widget auxiliar para títulos de sección
+  Widget _buildProfileHero(
+    BuildContext context, {
+    required String fullName,
+    required String courseType,
+    required String userName,
+    String? imageUrl,
+  }) {
+    final brand = context.brandColor;
+    return LimpioCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          SizedBox(
+            height: 228,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  height: 96,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(18)),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        brand,
+                        brand.withValues(alpha: 0.75),
+                        context.isDarkMode
+                            ? const Color(0xFF1E3A5F)
+                            : const Color(0xFF56CCF2),
+                      ],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 48,
+                  left: 0,
+                  right: 0,
+                  child: Column(
+                    children: [
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: context.cardColor,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: context.shadowColor,
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: CircleAvatar(
+                              radius: 46,
+                              backgroundColor: context.brandSoft,
+                              backgroundImage: _localImageFile != null
+                                  ? FileImage(File(_localImageFile!))
+                                  : (imageUrl != null
+                                      ? NetworkImage(imageUrl)
+                                      : null) as ImageProvider?,
+                              child: (_localImageFile == null &&
+                                      imageUrl == null)
+                                  ? Text(
+                                      fullName.isNotEmpty
+                                          ? fullName[0].toUpperCase()
+                                          : 'E',
+                                      style: TextStyle(
+                                        fontSize: 30,
+                                        fontWeight: FontWeight.w800,
+                                        color: brand,
+                                      ),
+                                    )
+                                  : null,
+                            ),
+                          ),
+                          if (_isUploadingImage)
+                            Positioned.fill(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.45),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Center(
+                                  child: SizedBox(
+                                    width: 26,
+                                    height: 26,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          Colors.white),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          Positioned(
+                            bottom: 2,
+                            right: 2,
+                            child: GestureDetector(
+                              onTap: _isUploadingImage ? null : _pickImage,
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: _isUploadingImage
+                                      ? context.subtitleColor
+                                      : brand,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: context.cardColor,
+                                    width: 2.5,
+                                  ),
+                                ),
+                                child: const Icon(Icons.camera_alt_rounded,
+                                    color: Colors.white, size: 14),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Column(
+                          children: [
+                            Text(
+                              fullName,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 21,
+                                fontWeight: FontWeight.w800,
+                                color: context.textColor,
+                              ),
+                            ),
+                            if (userName.isNotEmpty) ...[
+                              const SizedBox(height: 3),
+                              Text(
+                                '@$userName',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: context.subtitleColor,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 10),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: context.brandSoft,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                courseType,
+                                style: TextStyle(
+                                  color: brand,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBadgesCard(BuildContext context) {
+    return LimpioCard(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Insignias',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: context.textColor,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Tu progreso por nivel',
+            style: TextStyle(
+              fontSize: 12,
+              color: context.subtitleColor,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              _buildLevelBadge('A1', LimpioTokens.brand, context),
+              _buildLevelBadge('A2', LimpioTokens.success, context),
+              _buildLevelBadge('B1', LimpioTokens.warning, context),
+              _buildLevelBadge('B2', LimpioTokens.purple, context),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildThemeToggleCard(BuildContext context, bool isDarkMode) {
+    final brand = context.brandColor;
+    return LimpioCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: context.brandSoft,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              isDarkMode
+                  ? Icons.dark_mode_rounded
+                  : Icons.light_mode_rounded,
+              size: 22,
+              color: brand,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Modo oscuro',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: context.textColor,
+                  ),
+                ),
+                Text(
+                  isDarkMode
+                      ? 'Tema oscuro activado'
+                      : 'Tema claro activado',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: context.subtitleColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: isDarkMode,
+            onChanged: (value) async {
+              await ThemeProvider.setDarkMode(value);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSectionTitle(String title, BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Align(
         alignment: Alignment.centerLeft,
         child: Text(
           title,
           style: TextStyle(
-            fontSize: 18,
+            fontSize: 13,
             fontWeight: FontWeight.w800,
-            color: context.textColor,
+            letterSpacing: 0.3,
+            color: context.subtitleColor,
           ),
         ),
       ),
     );
   }
 
-  // Widget contenedor para las tarjetas blancas con sombra
   Widget _buildInfoCard(List<Widget> children, BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: context.cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: context.borderColor),
-        boxShadow: [
-          BoxShadow(
-            color: context.shadowColor,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return LimpioCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Column(children: children),
     );
   }
 
   Widget _buildInfoRow(
-      IconData icon, String label, String value, BuildContext context) {
-    const iconColor = Color(0xFF2A60E4);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, size: 20, color: iconColor),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    style: TextStyle(
-                        fontSize: 13,
+    IconData icon,
+    String label,
+    String value,
+    BuildContext context, {
+    bool showDivider = false,
+  }) {
+    final brand = context.brandColor;
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: context.brandSoft,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 18, color: brand),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 12,
                         color: context.subtitleColor,
-                        fontWeight: FontWeight.w600)),
-                const SizedBox(height: 2),
-                Text(value,
-                    style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      value,
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: context.textColor)),
-              ],
-            ),
+                        color: context.textColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+        if (showDivider)
+          Divider(height: 1, color: context.borderColor),
+      ],
     );
   }
 
@@ -715,21 +846,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          width: double.infinity,
+        LimpioCard(
           padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: context.cardColor,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: context.borderColor),
-            boxShadow: [
-              BoxShadow(
-                color: context.shadowColor,
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -746,8 +864,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: (allPaid || aggregatePending == 0
-                              ? const Color(0xFF1FAB5E)
-                              : const Color(0xFFF59E0B))
+                              ? LimpioTokens.success
+                              : LimpioTokens.warning)
                           .withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -761,8 +879,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               : '$aggregatePending PENDIENTE(S)'),
                       style: TextStyle(
                           color: allPaid || aggregatePending == 0
-                              ? const Color(0xFF1FAB5E)
-                              : const Color(0xFFF59E0B),
+                              ? LimpioTokens.success
+                              : LimpioTokens.warning,
                           fontWeight: FontWeight.w800,
                           fontSize: 11),
                     ),
@@ -809,13 +927,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
                     value: quotaProgress,
-                    backgroundColor: context.isDarkMode
-                        ? Colors.grey[800]
-                        : Colors.grey.withValues(alpha: 0.12),
+                    backgroundColor: LimpioTokens.brand.withValues(alpha: 0.12),
                     valueColor: AlwaysStoppedAnimation<Color>(
                       allPaid || paidQuotas == totalQuotas
-                          ? const Color(0xFF1FAB5E)
-                          : const Color(0xFF2A60E4),
+                          ? LimpioTokens.success
+                          : LimpioTokens.brand,
                     ),
                     minHeight: 6,
                   ),
@@ -826,11 +942,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const Row(
                   children: [
                     Icon(Icons.check_circle_rounded,
-                        color: Color(0xFF1FAB5E), size: 18),
+                        color: LimpioTokens.success, size: 18),
                     SizedBox(width: 8),
                     Text('Pagado en su totalidad',
                         style: TextStyle(
-                            color: Color(0xFF1FAB5E),
+                            color: LimpioTokens.success,
                             fontSize: 13,
                             fontWeight: FontWeight.w600)),
                   ],
@@ -886,22 +1002,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final int pending = (plan['pendingCount'] as int?) ?? 0;
     final List quotas = plan['quotas'] is List ? plan['quotas'] as List : [];
     final Color methodColor =
-        isContado ? const Color(0xFF1FAB5E) : const Color(0xFF7C3AED);
+        isContado ? LimpioTokens.success : LimpioTokens.purple;
     final Color statusColor =
-        isFullyPaid ? const Color(0xFF1FAB5E) : const Color(0xFFF59E0B);
+        isFullyPaid ? LimpioTokens.success : LimpioTokens.warning;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: context.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.borderColor),
-      ),
+    return LimpioCard(
+      elevated: false,
+      padding: EdgeInsets.zero,
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
           tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          childrenPadding:
-              const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           iconColor: context.subtitleColor,
           collapsedIconColor: context.subtitleColor,
           title: Column(
@@ -995,20 +1107,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     BuildContext context,
   ) {
     final bool paid = plan['contadoPaid'] == true;
+    final accent = paid ? LimpioTokens.success : LimpioTokens.warning;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: paid
-            ? const Color(0xFF1FAB5E).withValues(alpha: 0.08)
-            : const Color(0xFFF59E0B).withValues(alpha: 0.08),
+        color: accent.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
           Icon(
             paid ? Icons.check_circle_rounded : Icons.schedule_rounded,
-            color: paid ? const Color(0xFF1FAB5E) : const Color(0xFFF59E0B),
+            color: accent,
             size: 22,
           ),
           const SizedBox(width: 12),
@@ -1056,14 +1167,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: paid
-            ? const Color(0xFF1FAB5E).withValues(alpha: 0.06)
-            : (context.isDarkMode
-                ? Colors.white.withValues(alpha: 0.04)
-                : Colors.grey.withValues(alpha: 0.06)),
+            ? LimpioTokens.success.withValues(alpha: 0.08)
+            : context.borderColor.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: paid
-              ? const Color(0xFF1FAB5E).withValues(alpha: 0.2)
+              ? LimpioTokens.success.withValues(alpha: 0.25)
               : context.borderColor,
         ),
       ),
@@ -1072,7 +1181,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Icon(
             paid ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
             size: 20,
-            color: paid ? const Color(0xFF1FAB5E) : context.subtitleColor,
+            color: paid ? LimpioTokens.success : context.subtitleColor,
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -1113,63 +1222,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildLevelBadge(String level, Color color, BuildContext context) {
     final badgePath = _lastBadgePerLevel[level];
     final bool hasBadge = badgePath != null;
+    final accent = context.isDarkMode && color == LimpioTokens.brand
+        ? LimpioTokens.brandDark
+        : color;
 
-    return Container(
-      width: 72,
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        color: context.cardColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: hasBadge ? color.withValues(alpha: 0.3) : context.borderColor,
-          width: 1.5,
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 3),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: hasBadge
+              ? accent.withValues(alpha: context.isDarkMode ? 0.14 : 0.08)
+              : (context.isDarkMode
+                  ? LimpioTokens.darkElevated
+                  : context.bgScaffold),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: hasBadge
+                ? accent.withValues(alpha: 0.4)
+                : context.borderColor,
+          ),
         ),
-        boxShadow: hasBadge
-            ? [
-                BoxShadow(
-                  color: color.withValues(alpha: 0.12),
-                  blurRadius: 8,
-                  spreadRadius: 1,
-                ),
-              ]
-            : [],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Badge image o lock
-          hasBadge
-              ? Image.asset(
-                  badgePath,
-                  width: 38,
-                  height: 38,
-                  fit: BoxFit.contain,
-                )
-              : Icon(
-                  Icons.lock_outline_rounded,
-                  size: 28,
-                  color: Colors.grey[400],
-                ),
-          const SizedBox(height: 4),
-          // Label del nivel
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: hasBadge
-                  ? color.withValues(alpha: 0.1)
-                  : Colors.grey.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            hasBadge
+                ? Image.asset(
+                    badgePath,
+                    width: 34,
+                    height: 34,
+                    fit: BoxFit.contain,
+                  )
+                : Icon(
+                    Icons.lock_outline_rounded,
+                    size: 26,
+                    color: context.subtitleColor.withValues(alpha: 0.55),
+                  ),
+            const SizedBox(height: 6),
+            Text(
               level,
               style: TextStyle(
                 fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: hasBadge ? color : Colors.grey[500],
+                fontWeight: FontWeight.w800,
+                color: hasBadge ? accent : context.subtitleColor,
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

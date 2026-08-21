@@ -14,6 +14,15 @@ abstract final class LimpioTokens {
   static const purple = Color(0xFF8E44AD);
   static const danger = Color(0xFFE74C3C);
 
+  /// Variantes dark
+  static const darkScaffold = Color(0xFF0B0E14);
+  static const darkCard = Color(0xFF151922);
+  static const darkElevated = Color(0xFF1C2230);
+  static const darkInk = Color(0xFFF0F2F5);
+  static const darkMuted = Color(0xFF9AA3B2);
+  static const darkLine = Color(0xFF2A3140);
+  static const brandDark = Color(0xFF5B8DEF);
+
   static BoxDecoration cardDecoration({bool elevated = true}) => BoxDecoration(
         color: card,
         borderRadius: BorderRadius.circular(18),
@@ -35,6 +44,7 @@ class LimpioCard extends StatelessWidget {
   final EdgeInsetsGeometry? padding;
   final VoidCallback? onTap;
   final bool elevated;
+  final Color? color;
 
   const LimpioCard({
     super.key,
@@ -42,24 +52,23 @@ class LimpioCard extends StatelessWidget {
     this.padding,
     this.onTap,
     this.elevated = true,
+    this.color,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final deco = BoxDecoration(
-      color: isDark ? const Color(0xFF1A1D28) : LimpioTokens.card,
+      color: color ?? (isDark ? LimpioTokens.darkCard : LimpioTokens.card),
       borderRadius: BorderRadius.circular(18),
       border: Border.all(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.08)
-            : LimpioTokens.line,
+        color: isDark ? LimpioTokens.darkLine : LimpioTokens.line,
       ),
-      boxShadow: elevated && !isDark
+      boxShadow: elevated
           ? [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 14,
+                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.04),
+                blurRadius: isDark ? 18 : 14,
                 offset: const Offset(0, 5),
               ),
             ]

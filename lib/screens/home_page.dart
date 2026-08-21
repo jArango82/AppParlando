@@ -428,17 +428,16 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         totalModules > 0 ? completedModules / totalModules : 0.0;
     final int progressPercent = (progress * 100).round();
 
-    // Colores por nivel
-    Color accentColor = const Color(0xFF2A60E4);
+    Color accentColor = LimpioTokens.brand;
     if (level == 'A2') {
-      accentColor = const Color(0xFF1FAB5E);
+      accentColor = LimpioTokens.success;
     } else if (level == 'B1') {
-      accentColor = const Color(0xFFE67E22);
+      accentColor = LimpioTokens.warning;
     } else if (level == 'B2') {
-      accentColor = const Color(0xFF8E44AD);
+      accentColor = LimpioTokens.purple;
     }
 
-    return LimpioCard(
+    return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
@@ -447,95 +446,160 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           ),
         );
       },
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: context.isDarkMode
+              ? null
+              : [
+                  BoxShadow(
+                    color: accentColor.withValues(alpha: 0.28),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: Stack(
             children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: accentColor,
-                  borderRadius: BorderRadius.circular(14),
+              Image.asset(
+                'assets/$level.webp',
+                height: 200,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => Container(
+                  height: 200,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        accentColor,
+                        accentColor.withValues(alpha: 0.7),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
                 ),
-                child: const Icon(Icons.play_arrow_rounded,
-                    color: Colors.white, size: 22),
               ),
-              const SizedBox(width: 12),
-              Expanded(
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.15),
+                        Colors.black.withValues(alpha: 0.72),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 20,
+                right: 20,
+                top: 18,
+                bottom: 18,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: accentColor,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            'NIVEL $level',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '$progressPercent% completado',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
                     Text(
                       'Continuar aprendiendo',
                       style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.85),
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: context.subtitleColor,
                       ),
                     ),
+                    const SizedBox(height: 6),
                     Text(
-                      course['fullname']?.toString() ?? 'Tu curso',
+                      nextLesson,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 18,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
                         fontWeight: FontWeight.w800,
-                        color: context.textColor,
                       ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: progress,
+                              backgroundColor:
+                                  Colors.white.withValues(alpha: 0.22),
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(accentColor),
+                              minHeight: 6,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.play_arrow_rounded,
+                            color: accentColor,
+                            size: 24,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: accentColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  'Nivel $level',
-                  style: TextStyle(
-                    color: accentColor,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
             ],
           ),
-          const SizedBox(height: 10),
-          Text(
-            nextLesson,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 15,
-              color: context.subtitleColor,
-            ),
-          ),
-          const SizedBox(height: 16),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 8,
-              backgroundColor: accentColor.withValues(alpha: 0.12),
-              color: accentColor,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '$progressPercent% del curso',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: accentColor,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

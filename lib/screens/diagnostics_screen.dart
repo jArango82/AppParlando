@@ -495,7 +495,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                         : hasContent
                             ? (sectionProgress > 0
                                 ? Icons.play_circle_fill_rounded
-                                : Icons.quiz_rounded)
+                                : Icons.menu_book_rounded)
                             : Icons.lock_outline_rounded,
                     color: statusColor,
                     size: 22,
@@ -785,12 +785,12 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
     } else {
       switch (modname) {
         case 'quiz':
-          icon = Icons.quiz_rounded;
+          icon = Icons.edit_note_rounded;
           iconBgColor = const Color(0xFFFFF3E0);
           iconColor = const Color(0xFFE67E22);
           break;
         case 'h5pactivity':
-          icon = Icons.games_rounded;
+          icon = Icons.extension_rounded;
           iconBgColor = const Color(0xFFE0F2F1);
           iconColor = const Color(0xFF00897B);
           break;
