@@ -42,29 +42,23 @@ class _CoursesScreenState extends State<CoursesScreen> {
       backgroundColor: context.bgScaffold, // Fondo gris claro moderno / oscuro
       appBar: AppBar(
         title: Text(
-          'Mis Cursos',
+          'Mis cursos',
           style: TextStyle(
             color: context.textColor,
             fontWeight: FontWeight.w800,
-            fontSize: 20,
+            fontSize: 22,
           ),
         ),
-        backgroundColor: context.cardColor,
+        backgroundColor: context.bgScaffold,
         elevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: false,
         actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            decoration: BoxDecoration(
-              color: context.bgScaffold,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.refresh, color: Color(0xFF2A60E4)),
-              onPressed: _loadCourses,
-              tooltip: 'Actualizar',
-            ),
-          )
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF2A60E4)),
+            onPressed: _loadCourses,
+            tooltip: 'Actualizar',
+          ),
         ],
       ),
       body: FutureBuilder<List<dynamic>>(

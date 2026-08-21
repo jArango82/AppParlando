@@ -136,14 +136,15 @@ class _GradesScreenState extends State<GradesScreen> {
       backgroundColor: context.bgScaffold,
       appBar: AppBar(
         title: Text(
-          'Rendimiento Académico',
+          'Notas',
           style: TextStyle(
               color: context.textColor,
               fontWeight: FontWeight.w800,
-              fontSize: 20),
+              fontSize: 22),
         ),
-        backgroundColor: context.cardColor,
+        backgroundColor: context.bgScaffold,
         elevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: false,
         actions: [
           Container(

@@ -331,15 +331,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             backgroundColor: context.bgScaffold,
             appBar: AppBar(
               title: Text(
-                'Mi Perfil',
+                'Perfil',
                 style: TextStyle(
                   color: context.textColor,
                   fontWeight: FontWeight.w800,
-                  fontSize: 20,
+                  fontSize: 22,
                 ),
               ),
-              backgroundColor: context.cardColor,
+              backgroundColor: context.bgScaffold,
               elevation: 0,
+              scrolledUnderElevation: 0,
               centerTitle: false,
               iconTheme: IconThemeData(color: context.textColor),
             ),

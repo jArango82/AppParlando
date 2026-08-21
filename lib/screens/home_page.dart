@@ -11,6 +11,7 @@ import '../models/practice_exercise.dart';
 import 'course_details_screen.dart';
 import 'practice/practice_level_select_screen.dart';
 import '../widgets/custom_loading_indicator.dart';
+import '../widgets/limpio_card.dart';
 import '../theme_provider.dart';
 
 class HomePage extends StatefulWidget {
@@ -330,36 +331,32 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Widget _buildHeader(String name, String? imageUrl, BuildContext context) {
     return Row(
       children: [
-        // Avatar
         Container(
-          padding: const EdgeInsets.all(3),
+          padding: const EdgeInsets.all(2.5),
           decoration: BoxDecoration(
-            color: context.cardColor,
             shape: BoxShape.circle,
-            border: Border.all(color: context.borderColor),
-            boxShadow: [
-              BoxShadow(
-                color: context.shadowColor,
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            border: Border.all(
+              color: LimpioTokens.brand.withValues(alpha: 0.25),
+              width: 2,
+            ),
           ),
           child: CircleAvatar(
-            radius: 26,
-            backgroundColor: context.bgScaffold,
+            radius: 24,
+            backgroundColor: LimpioTokens.brandSoft,
             backgroundImage: imageUrl != null ? NetworkImage(imageUrl) : null,
             child: imageUrl == null
-                ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'E',
+                ? Text(
+                    name.isNotEmpty ? name[0].toUpperCase() : 'E',
                     style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF2A60E4)))
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: LimpioTokens.brand,
+                    ),
+                  )
                 : null,
           ),
         ),
-        const SizedBox(width: 14),
-        // Saludo
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -367,17 +364,19 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               Text(
                 _getGreeting(),
                 style: TextStyle(
-                    color: context.subtitleColor,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600),
+                  color: context.subtitleColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-              const SizedBox(height: 2),
               Text(
                 name,
                 style: TextStyle(
-                    color: context.textColor,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800),
+                  color: context.textColor,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  height: 1.15,
+                ),
               ),
             ],
           ),
@@ -437,161 +436,104 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       accentColor = const Color(0xFF8E44AD);
     }
 
-    return GestureDetector(
+    return LimpioCard(
       onTap: () {
         Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => CourseDetailsScreen(course: course),
-            ));
+          context,
+          MaterialPageRoute(
+            builder: (context) => CourseDetailsScreen(course: course),
+          ),
+        );
       },
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-                color: accentColor.withValues(alpha: 0.3),
-                blurRadius: 15,
-                offset: const Offset(0, 8)),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: Stack(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              // Imagen de fondo del curso
-              Image.asset(
-                'assets/$level.webp',
-                height: 200,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Container(
-                  height: 200,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [accentColor, accentColor.withValues(alpha: 0.7)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                  ),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: accentColor,
+                  borderRadius: BorderRadius.circular(14),
                 ),
+                child: const Icon(Icons.play_arrow_rounded,
+                    color: Colors.white, size: 22),
               ),
-              // Capa oscura
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.black.withValues(alpha: 0.15),
-                        Colors.black.withValues(alpha: 0.7),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              // Contenido superpuesto
-              Positioned(
-                left: 20,
-                right: 20,
-                top: 18,
-                bottom: 18,
+              const SizedBox(width: 12),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: accentColor,
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: [
-                              BoxShadow(
-                                color: accentColor.withValues(alpha: 0.4),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Text('NIVEL $level',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.5,
-                                  fontSize: 11)),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text('$progressPercent% completado',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700)),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
                     Text(
-                      'Continuar Aprendiendo',
+                      'Continuar aprendiendo',
                       style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.8),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: context.subtitleColor,
+                      ),
                     ),
-                    const SizedBox(height: 6),
                     Text(
-                      nextLesson,
+                      course['fullname']?.toString() ?? 'Tu curso',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800),
-                    ),
-                    const SizedBox(height: 16),
-                    // Barra de progreso
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
-                            child: LinearProgressIndicator(
-                              value: progress,
-                              backgroundColor: Colors.white.withValues(alpha: 0.2),
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(accentColor),
-                              minHeight: 6,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(Icons.play_arrow_rounded,
-                              color: accentColor, size: 24),
-                        ),
-                      ],
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: context.textColor,
+                      ),
                     ),
                   ],
                 ),
               ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'Nivel $level',
+                  style: TextStyle(
+                    color: accentColor,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
             ],
           ),
-        ),
+          const SizedBox(height: 10),
+          Text(
+            nextLesson,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 15,
+              color: context.subtitleColor,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 8,
+              backgroundColor: accentColor.withValues(alpha: 0.12),
+              color: accentColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '$progressPercent% del curso',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: accentColor,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -839,16 +781,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   // ── TÍTULO DE SECCIÓN ──────────────────────────────────────
 
   Widget _buildSectionTitle(String title, IconData icon, BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 22, color: const Color(0xFF2A60E4)),
-        const SizedBox(width: 10),
-        Text(title,
-            style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: context.textColor)),
-      ],
+    return Text(
+      title,
+      style: TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.w800,
+        color: context.textColor,
+      ),
     );
   }
 
@@ -947,14 +886,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: context.cardColor,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(18),
                   border: Border.all(color: context.borderColor),
                   boxShadow: [
                     if (!context.isDarkMode)
                       BoxShadow(
-                          color: context.shadowColor,
-                          blurRadius: 10,
-                          offset: const Offset(0, 4)),
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 14,
+                        offset: const Offset(0, 5),
+                      ),
                   ],
                 ),
                 child: Column(

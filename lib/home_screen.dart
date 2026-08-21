@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'main_page.dart';
 import 'services/auth_service.dart';
 import 'widgets/custom_loading_indicator.dart';
+import 'widgets/limpio_card.dart';
 import 'theme_provider.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -112,109 +113,98 @@ class _HomeScreenState extends State<HomeScreen>
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Línea divisoria sutil
-        const Divider(
-          color: Colors.grey,
-          thickness: 0.5,
-          indent: 60,
-          endIndent: 60,
-        ),
-
-        const SizedBox(height: 10),
-
-        // Texto "Iniciar Sesión"
         const Text(
-          "Iniciar Sesión",
+          'Bienvenido a Parlando',
           style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w500,
-            color: Colors.black,
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            color: LimpioTokens.ink,
           ),
         ),
-
-        const SizedBox(height: 20),
-
-        // Campo de Usuario
-        TextField(
-          controller: _usernameController,
-          style: const TextStyle(color: Colors.black),
-          decoration: InputDecoration(
-            labelText: "Usuario",
-            labelStyle: const TextStyle(color: Colors.black54),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            prefixIcon:
-                const Icon(Icons.person, color: Colors.blue),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                  color: Colors.blue, width: 2),
-            ),
+        const SizedBox(height: 6),
+        const Text(
+          'Inicia sesión para continuar aprendiendo',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 15,
+            color: LimpioTokens.muted,
           ),
         ),
-        const SizedBox(height: 20),
-
-        // Campo de Contraseña
-        TextField(
-          controller: _passwordController,
-          obscureText: true,
-          style: const TextStyle(color: Colors.black),
-          decoration: InputDecoration(
-            labelText: "Contraseña",
-            labelStyle: const TextStyle(color: Colors.black54),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            prefixIcon:
-                const Icon(Icons.lock, color: Colors.blue),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                  color: Colors.blue, width: 2),
-            ),
-          ),
-        ),
-        const SizedBox(height: 30),
-
-        // Botón de Login
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: _isLoading ? null : _handleLogin,
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 15),
-              backgroundColor: Colors.blue,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: _isLoading
-                ? const SizedBox(
-                    height: 30,
-                    width: 30,
-                    child: CustomLoadingIndicator(size: 30),
-                  )
-                : const Text(
-                    "Ingresar",
-                    style: TextStyle(
-                        fontSize: 18,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold),
+        const SizedBox(height: 28),
+        LimpioCard(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              TextField(
+                controller: _usernameController,
+                style: const TextStyle(color: LimpioTokens.ink),
+                decoration: InputDecoration(
+                  labelText: 'Usuario',
+                  prefixIcon: const Icon(Icons.person_outline,
+                      color: LimpioTokens.brand),
+                  filled: true,
+                  fillColor: LimpioTokens.scaffold,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
                   ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _passwordController,
+                obscureText: true,
+                style: const TextStyle(color: LimpioTokens.ink),
+                decoration: InputDecoration(
+                  labelText: 'Contraseña',
+                  prefixIcon:
+                      const Icon(Icons.lock_outline, color: LimpioTokens.brand),
+                  filled: true,
+                  fillColor: LimpioTokens.scaffold,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _isLoading ? null : _handleLogin,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: LimpioTokens.brand,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 28,
+                          width: 28,
+                          child: CustomLoadingIndicator(size: 28),
+                        )
+                      : const Text(
+                          'Entrar',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                ),
+              ),
+            ],
           ),
         ),
-
-        const SizedBox(height: 20),
-
-        // Enlace de Olvidé mi contraseña
+        const SizedBox(height: 12),
         TextButton(
           onPressed: () {},
           child: const Text(
-            "Olvidé mi contraseña",
+            'Olvidé mi contraseña',
             style: TextStyle(
-              color: Colors.blue,
-              fontWeight: FontWeight.w600,
+              color: LimpioTokens.brand,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ),
@@ -227,7 +217,7 @@ class _HomeScreenState extends State<HomeScreen>
     final bool isWide = context.isWideScreen;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: LimpioTokens.scaffold,
       body: Center(
         child: SingleChildScrollView(
           child: Padding(

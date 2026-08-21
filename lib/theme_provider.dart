@@ -53,12 +53,12 @@ extension AppThemeColors on BuildContext {
       isDarkMode ? const Color(0xFFE8EAED) : const Color(0xFF1A1D26);
 
   Color get subtitleColor =>
-      isDarkMode ? const Color(0xFF9AA0A6) : Colors.grey;
+      isDarkMode ? const Color(0xFF9AA0A6) : const Color(0xFF6B7280);
 
   Color get borderColor =>
       isDarkMode
           ? Colors.white.withValues(alpha: 0.08)
-          : Colors.grey.withValues(alpha: 0.12);
+          : const Color(0xFFE5E7EB);
 
   Color get shadowColor =>
       isDarkMode

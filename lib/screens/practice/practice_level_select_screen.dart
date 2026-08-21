@@ -49,8 +49,9 @@ class PracticeLevelSelectScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: context.bgScaffold,
       appBar: AppBar(
-        backgroundColor: context.cardColor,
+        backgroundColor: context.bgScaffold,
         elevation: 0,
+        scrolledUnderElevation: 0,
         title: Text(
           category.label,
           style: TextStyle(
