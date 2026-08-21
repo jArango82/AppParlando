@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'course_service.dart';
 import 'auth_service.dart';
 import '../config/course_config.dart';
+import '../utils/module_filters.dart';
 import '../repositories/badge_repository.dart';
 import '../repositories/insforge_badge_repository.dart';
 
@@ -51,7 +52,7 @@ class BadgeService {
       assetPath: 'assets/badges/A1/1.webp',
       level: 'A1',
       coursePartName: 'A1 parte 1',
-      diagnosticSectionNum: 1,
+      diagnosticSectionNum: 51,
       title: '¡Sección Completada!',
       subtitle: 'A1 - Parte 1',
     ),
@@ -60,7 +61,7 @@ class BadgeService {
       assetPath: 'assets/badges/A1/2.webp',
       level: 'A1',
       coursePartName: 'A1 parte 2',
-      diagnosticSectionNum: 2,
+      diagnosticSectionNum: 78,
       title: '¡Sección Completada!',
       subtitle: 'A1 - Parte 2',
     ),
@@ -69,7 +70,7 @@ class BadgeService {
       assetPath: 'assets/badges/A1/3.webp',
       level: 'A1',
       coursePartName: 'A1 parte 3',
-      diagnosticSectionNum: 3,
+      diagnosticSectionNum: 103,
       title: '¡Sección Completada!',
       subtitle: 'A1 - Parte 3',
     ),
@@ -78,7 +79,7 @@ class BadgeService {
       assetPath: 'assets/badges/A1/4.webp',
       level: 'A1',
       coursePartName: 'A1 parte 4',
-      diagnosticSectionNum: -1, // Solo requiere completar el curso
+      diagnosticSectionNum: 128,
       title: '¡Nivel A1 Completado!',
       subtitle: 'A1 - Parte 4',
     ),
@@ -89,7 +90,7 @@ class BadgeService {
       assetPath: 'assets/badges/A2/1.webp',
       level: 'A2',
       coursePartName: 'A2 Parte 1',
-      diagnosticSectionNum: 4,
+      diagnosticSectionNum: 29,
       title: '¡Sección Completada!',
       subtitle: 'A2 - Parte 1',
     ),
@@ -98,7 +99,7 @@ class BadgeService {
       assetPath: 'assets/badges/A2/2.webp',
       level: 'A2',
       coursePartName: 'A2 Parte 2',
-      diagnosticSectionNum: 5,
+      diagnosticSectionNum: 53,
       title: '¡Sección Completada!',
       subtitle: 'A2 - Parte 2',
     ),
@@ -107,7 +108,7 @@ class BadgeService {
       assetPath: 'assets/badges/A2/3.webp',
       level: 'A2',
       coursePartName: 'A2 Parte 3',
-      diagnosticSectionNum: 6,
+      diagnosticSectionNum: 81,
       title: '¡Sección Completada!',
       subtitle: 'A2 - Parte 3',
     ),
@@ -116,7 +117,7 @@ class BadgeService {
       assetPath: 'assets/badges/A2/4.webp',
       level: 'A2',
       coursePartName: 'A2 Parte 4',
-      diagnosticSectionNum: 7,
+      diagnosticSectionNum: 106,
       title: '¡Sección Completada!',
       subtitle: 'A2 - Parte 4',
     ),
@@ -125,7 +126,7 @@ class BadgeService {
       assetPath: 'assets/badges/A2/5.webp',
       level: 'A2',
       coursePartName: 'A2 Parte 5',
-      diagnosticSectionNum: 8,
+      diagnosticSectionNum: 131,
       title: '¡Sección Completada!',
       subtitle: 'A2 - Parte 5',
     ),
@@ -134,7 +135,7 @@ class BadgeService {
       assetPath: 'assets/badges/A2/6.webp',
       level: 'A2',
       coursePartName: 'A2 Parte 6',
-      diagnosticSectionNum: 9,
+      diagnosticSectionNum: 152,
       title: '¡Nivel A2 Completado!',
       subtitle: 'A2 - Parte 6',
     ),
@@ -145,7 +146,7 @@ class BadgeService {
       assetPath: 'assets/badges/B1/1.webp',
       level: 'B1',
       coursePartName: 'B1 Parte 1',
-      diagnosticSectionNum: 10,
+      diagnosticSectionNum: 24,
       title: '¡Sección Completada!',
       subtitle: 'B1 - Parte 1',
     ),
@@ -154,7 +155,7 @@ class BadgeService {
       assetPath: 'assets/badges/B1/2.webp',
       level: 'B1',
       coursePartName: 'B1 Parte 2',
-      diagnosticSectionNum: 11,
+      diagnosticSectionNum: 51,
       title: '¡Sección Completada!',
       subtitle: 'B1 - Parte 2',
     ),
@@ -163,7 +164,7 @@ class BadgeService {
       assetPath: 'assets/badges/B1/3.webp',
       level: 'B1',
       coursePartName: 'B1 Parte 3',
-      diagnosticSectionNum: 12,
+      diagnosticSectionNum: 76,
       title: '¡Sección Completada!',
       subtitle: 'B1 - Parte 3',
     ),
@@ -172,7 +173,7 @@ class BadgeService {
       assetPath: 'assets/badges/B1/4.webp',
       level: 'B1',
       coursePartName: 'B1 Parte 4',
-      diagnosticSectionNum: 13,
+      diagnosticSectionNum: 101,
       title: '¡Sección Completada!',
       subtitle: 'B1 - Parte 4',
     ),
@@ -181,7 +182,7 @@ class BadgeService {
       assetPath: 'assets/badges/B1/5.webp',
       level: 'B1',
       coursePartName: 'B1 Parte 5',
-      diagnosticSectionNum: 14,
+      diagnosticSectionNum: 128,
       title: '¡Sección Completada!',
       subtitle: 'B1 - Parte 5',
     ),
@@ -190,7 +191,7 @@ class BadgeService {
       assetPath: 'assets/badges/B1/6.webp',
       level: 'B1',
       coursePartName: 'B1 Parte 6',
-      diagnosticSectionNum: 15,
+      diagnosticSectionNum: 153,
       title: '¡Nivel B1 Completado!',
       subtitle: 'B1 - Parte 6',
     ),
@@ -201,7 +202,7 @@ class BadgeService {
       assetPath: 'assets/badges/B2/1.webp',
       level: 'B2',
       coursePartName: 'B2 Parte 1',
-      diagnosticSectionNum: 16,
+      diagnosticSectionNum: 27,
       title: '¡Sección Completada!',
       subtitle: 'B2 - Parte 1',
     ),
@@ -210,7 +211,7 @@ class BadgeService {
       assetPath: 'assets/badges/B2/2.webp',
       level: 'B2',
       coursePartName: 'B2 Parte 2',
-      diagnosticSectionNum: 17,
+      diagnosticSectionNum: 55,
       title: '¡Sección Completada!',
       subtitle: 'B2 - Parte 2',
     ),
@@ -219,7 +220,7 @@ class BadgeService {
       assetPath: 'assets/badges/B2/3.webp',
       level: 'B2',
       coursePartName: 'B2 Parte 3',
-      diagnosticSectionNum: 18,
+      diagnosticSectionNum: 83,
       title: '¡Sección Completada!',
       subtitle: 'B2 - Parte 3',
     ),
@@ -228,7 +229,7 @@ class BadgeService {
       assetPath: 'assets/badges/B2/4.webp',
       level: 'B2',
       coursePartName: 'B2 Parte 4',
-      diagnosticSectionNum: 19,
+      diagnosticSectionNum: 109,
       title: '¡Sección Completada!',
       subtitle: 'B2 - Parte 4',
     ),
@@ -237,7 +238,7 @@ class BadgeService {
       assetPath: 'assets/badges/B2/5.webp',
       level: 'B2',
       coursePartName: 'B2 Parte 5',
-      diagnosticSectionNum: 20,
+      diagnosticSectionNum: 135,
       title: '¡Sección Completada!',
       subtitle: 'B2 - Parte 5',
     ),
@@ -246,14 +247,16 @@ class BadgeService {
       assetPath: 'assets/badges/B2/6.webp',
       level: 'B2',
       coursePartName: 'B2 Parte 6',
-      diagnosticSectionNum: 21,
+      diagnosticSectionNum: 165,
       title: '¡Nivel B2 Completado!',
       subtitle: 'B2 - Parte 6',
     ),
   ];
 
   // ── IDs de cursos ──
-  static const int diagnosticCourseId = 9;
+  /// Curso legado de diagnósticos (obsoleto). Los diagnósticos viven en cada nivel.
+  static const int diagnosticCourseId =
+      DiagnosticConfig.legacyDiagnosticCourseId;
 
   // ── Verificación de completitud ──────────────────────────────────
 
@@ -278,12 +281,11 @@ class BadgeService {
       final modules = section['modules'] as List<dynamic>? ?? [];
       for (var m in modules) {
         final name = m['name']?.toString().toLowerCase() ?? '';
+        if (isVideoModule(m)) continue;
         if (!name.contains('ejercicio')) continue;
 
         exerciseCount++;
-        if (m['completionState'] == 1 || m['completionState'] == 2) {
-          completedCount++;
-        } else if (m['grade'] != null && m['grade'] != '-') {
+        if (isModuleCompleted(m)) {
           completedCount++;
         }
       }
@@ -302,16 +304,15 @@ class BadgeService {
       final num = int.tryParse(section['section'].toString());
       if (num != sectionNum) continue;
 
-      final modules = section['modules'] as List<dynamic>? ?? [];
+      final modules = modulesWithoutVideo(
+          section['modules'] as List<dynamic>? ?? []);
       if (modules.isEmpty) return false;
 
       int total = 0;
       int completed = 0;
       for (var m in modules) {
         total++;
-        if (m['completionState'] == 1 ||
-            m['completionState'] == 2 ||
-            (m['grade'] != null && m['grade'] != '-')) {
+        if (isModuleCompleted(m)) {
           completed++;
         }
       }
@@ -467,14 +468,10 @@ class BadgeService {
       final String shortname = courseData['shortname'] ?? '';
       final String fullname = courseData['fullname'] ?? '';
 
-      // Cargar datos de ambos cursos en paralelo
-      final results = await Future.wait([
-        courseService.getCourseDetails(courseId),
-        courseService.getCourseDetails(diagnosticCourseId),
-      ]);
-
-      final courseSections = results[0]['sections'] as List<dynamic>? ?? [];
-      final diagnosticSections = results[1]['sections'] as List<dynamic>? ?? [];
+      // Diagnósticos viven en el mismo curso del nivel
+      final courseDetails = await courseService.getCourseDetails(courseId);
+      final courseSections = courseDetails['sections'] as List<dynamic>? ?? [];
+      final diagnosticSections = courseSections;
 
       // Determinar la configuración usando CourseConfig
       final coursePartsConfig = CourseConfig.getPartsForCourse(shortname, fullname: fullname);

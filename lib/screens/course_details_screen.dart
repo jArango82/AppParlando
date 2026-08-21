@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/course_service.dart';
 import '../services/badge_service.dart';
 import '../config/course_config.dart';
+import '../utils/module_filters.dart';
 import '../widgets/achievement_overlay.dart';
 import 'exercise_webview_screen.dart';
 import '../widgets/custom_loading_indicator.dart';
@@ -48,16 +49,11 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
       final courseService = CourseService();
       final badgeService = BadgeService();
 
-      // Cargar datos del curso actual y diagnósticos EN PARALELO
-      final results = await Future.wait([
-        courseService.getCourseDetails(widget.course['id']),
-        courseService.getCourseDetails(BadgeService.diagnosticCourseId),
-      ]);
-
-      final courseData = results[0];
-      final diagData = results[1];
+      // Diagnósticos viven en el mismo curso del nivel
+      final courseData =
+          await courseService.getCourseDetails(widget.course['id']);
       final courseSections = courseData['sections'] as List<dynamic>? ?? [];
-      final diagnosticSections = diagData['sections'] as List<dynamic>? ?? [];
+      final diagnosticSections = courseSections;
 
       // Refrescar la UI del curso
       if (mounted) {
@@ -272,12 +268,11 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
       if (s['modules'] != null) {
         for (var m in s['modules']) {
           final name = m['name']?.toString().toLowerCase() ?? '';
+          if (isVideoModule(m)) continue;
           if (!name.contains('ejercicio')) continue;
 
           exerciseCount++;
-          if (m['completionState'] == 1 || m['completionState'] == 2) {
-            completedCount++;
-          } else if (m['grade'] != null && m['grade'] != '-') {
+          if (isModuleCompleted(m)) {
             completedCount++;
           }
         }
@@ -415,16 +410,16 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
   // ── TARJETA DE TEMA (expandible) ────────────────────────────────
 
   Widget _buildTopicCard(dynamic section, int index) {
-    final modules = section['modules'] as List<dynamic>? ?? [];
+    final modules = modulesWithoutVideo(
+        section['modules'] as List<dynamic>? ?? []);
     if (modules.isEmpty) return const SizedBox.shrink();
 
     final sectionName = section['name']?.toString() ?? 'Tema ${index + 1}';
     final bool isExpanded = _expandedTopicIndex == index;
 
-    // Solo contamos módulos con "ejercicio" en el nombre para el progreso
+    // Solo contamos módulos con "ejercicio" en el nombre (sin videos)
     final validModules = modules.where((m) {
-      final name = m['name']?.toString().toLowerCase() ?? '';
-      return name.contains('ejercicio');
+      return isCountableExercise(m);
     }).toList();
 
     // Contamos las actividades completadas dentro de este tema específico

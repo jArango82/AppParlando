@@ -411,6 +411,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     for (var section in sections) {
       if (section['modules'] != null) {
         for (var module in section['modules']) {
+          final name = module['name']?.toString().toLowerCase() ?? '';
+          if (name.contains('video')) continue;
           totalModules++;
           if (module['completionState'] == 1 ||
               module['completionState'] == 2) {

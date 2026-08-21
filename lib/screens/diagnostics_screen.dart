@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/course_service.dart';
 import '../services/badge_service.dart';
 import '../config/course_config.dart';
+import '../utils/module_filters.dart';
 import '../widgets/custom_loading_indicator.dart';
 import '../widgets/achievement_overlay.dart';
 import 'exercise_webview_screen.dart';
@@ -16,46 +17,55 @@ class DiagnosticsScreen extends StatefulWidget {
 
 class _DiagnosticsScreenState extends State<DiagnosticsScreen>
     with TickerProviderStateMixin {
-  static const int _diagnosticCourseId = 9;
-
-  List<dynamic> _sections = [];
+  /// Secciones Moodle por nivel (A1/A2/B1/B2).
+  final Map<String, List<dynamic>> _sectionsByLevel = {};
   bool _isLoading = true;
   bool _hasError = false;
   String _errorMessage = '';
   int _selectedCategoryIndex = 0;
 
-  // Definición de las categorías de diagnóstico con sus secciones y estilo visual
-  // Cada categoría agrupa secciones de Moodle por nivel
   static final List<_DiagnosticCategory> _categories = [
-    const _DiagnosticCategory(
+    _DiagnosticCategory(
       title: 'Nivel A1',
       subtitle: 'Principiante',
+      levelKey: 'A1',
       icon: Icons.emoji_events_rounded,
-      gradientColors: [Color(0xFF2A60E4), Color(0xFF56CCF2)],
-      sectionIds: [0, 1, 2, 3], // Sección 0 agregada aquí
+      gradientColors: const [Color(0xFF2A60E4), Color(0xFF56CCF2)],
+      courseId: DiagnosticConfig.levels['A1']!.courseId,
+      sectionIds: DiagnosticConfig.levels['A1']!.sectionIds,
     ),
-    const _DiagnosticCategory(
+    _DiagnosticCategory(
       title: 'Nivel A2',
       subtitle: 'Elemental',
+      levelKey: 'A2',
       icon: Icons.trending_up_rounded,
-      gradientColors: [Color(0xFF1FAB5E), Color(0xFF56E89C)],
-      sectionIds: [4, 5, 6, 7, 8, 9],
+      gradientColors: const [Color(0xFF1FAB5E), Color(0xFF56E89C)],
+      courseId: DiagnosticConfig.levels['A2']!.courseId,
+      sectionIds: DiagnosticConfig.levels['A2']!.sectionIds,
     ),
-    const _DiagnosticCategory(
+    _DiagnosticCategory(
       title: 'Nivel B1',
       subtitle: 'Intermedio',
+      levelKey: 'B1',
       icon: Icons.rocket_launch_rounded,
-      gradientColors: [Color(0xFFE67E22), Color(0xFFF7C948)],
-      sectionIds: [10, 11, 12, 13, 14, 15],
+      gradientColors: const [Color(0xFFE67E22), Color(0xFFF7C948)],
+      courseId: DiagnosticConfig.levels['B1']!.courseId,
+      sectionIds: DiagnosticConfig.levels['B1']!.sectionIds,
     ),
-    const _DiagnosticCategory(
+    _DiagnosticCategory(
       title: 'Nivel B2',
       subtitle: 'Intermedio Alto',
+      levelKey: 'B2',
       icon: Icons.star_rounded,
-      gradientColors: [Color(0xFF8E44AD), Color(0xFFC66DD8)],
-      sectionIds: [16, 17, 18, 19, 20, 21],
+      gradientColors: const [Color(0xFF8E44AD), Color(0xFFC66DD8)],
+      courseId: DiagnosticConfig.levels['B2']!.courseId,
+      sectionIds: DiagnosticConfig.levels['B2']!.sectionIds,
     ),
   ];
+
+  List<dynamic> get _sections =>
+      _sectionsByLevel[_categories[_selectedCategoryIndex].levelKey] ??
+      const [];
 
   @override
   void initState() {
@@ -70,12 +80,19 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
     });
 
     try {
-      final data = await CourseService().getCourseDetails(_diagnosticCourseId);
-      final sections = data['sections'] as List<dynamic>? ?? [];
+      final courseService = CourseService();
+      final results = await Future.wait(
+        _categories.map(
+          (c) => courseService.getCourseDetails(c.courseId),
+        ),
+      );
 
       if (mounted) {
         setState(() {
-          _sections = sections;
+          for (var i = 0; i < _categories.length; i++) {
+            _sectionsByLevel[_categories[i].levelKey] =
+                results[i]['sections'] as List<dynamic>? ?? [];
+          }
           _isLoading = false;
         });
       }
@@ -99,16 +116,15 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
     return null;
   }
 
-  // Cuenta los módulos completados en una sección
+  // Cuenta los módulos completados en una sección (omite videos)
   Map<String, int> _getSectionProgress(Map<String, dynamic> section) {
-    final modules = section['modules'] as List<dynamic>? ?? [];
+    final modules = modulesWithoutVideo(
+        section['modules'] as List<dynamic>? ?? []);
     int total = 0;
     int completed = 0;
     for (var m in modules) {
       total++;
-      if (m['completionState'] == 1 ||
-          m['completionState'] == 2 ||
-          (m['grade'] != null && m['grade'] != '-')) {
+      if (isModuleCompleted(m)) {
         completed++;
       }
     }
@@ -344,7 +360,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
 
             // Título de Secciones
             Text(
-              'Módulos de Diagnóstico',
+              'Partes de diagnóstico',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
@@ -485,7 +501,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
       _DiagnosticCategory category, BuildContext context) {
     final String sectionName =
         section['name']?.toString() ?? 'Sección ${section['section']}';
-    final modules = section['modules'] as List<dynamic>? ?? [];
+    final modules = modulesWithoutVideo(
+        section['modules'] as List<dynamic>? ?? []);
     final progress = _getSectionProgress(section);
     final bool isCompleted =
         progress['total']! > 0 && progress['completed'] == progress['total'];
@@ -641,44 +658,30 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
     try {
       final courseService = CourseService();
       final badgeService = BadgeService();
+      final category = _categories[_selectedCategoryIndex];
 
-      // Recargar datos de diagnósticos (podrían haber cambiado)
-      final diagData =
-          await courseService.getCourseDetails(_diagnosticCourseId);
-      final diagnosticSections = diagData['sections'] as List<dynamic>? ?? [];
+      // Recargar el curso del nivel actual (diagnósticos = secciones de ese curso)
+      final courseData =
+          await courseService.getCourseDetails(category.courseId);
+      final sections = courseData['sections'] as List<dynamic>? ?? [];
 
-      // Actualizar las secciones locales con los datos frescos
       if (mounted) {
-        setState(() => _sections = diagnosticSections);
+        setState(() {
+          _sectionsByLevel[category.levelKey] = sections;
+        });
       }
 
-      // Obtener el curso del estudiante para verificar la otra condición
-      final courses = await courseService.getCourses();
-      if (courses.isEmpty) return;
+      final String shortname = 'Inglés ${category.levelKey}';
+      final String fullname = category.title;
 
-      // Buscar el primer curso que no sea el de diagnósticos
-      courses.sort((a, b) => (b['id'] as int).compareTo(a['id'] as int));
-      final mainCourse = courses.firstWhere(
-        (c) => c['id'] != _diagnosticCourseId,
-        orElse: () => courses.first,
-      );
-      final int mainCourseId = mainCourse['id'];
-      final String shortname = mainCourse['shortname'] ?? '';
-      final String fullname = mainCourse['fullname'] ?? '';
-
-      // Obtener secciones del curso principal
-      final courseData = await courseService.getCourseDetails(mainCourseId);
-      final courseSections = courseData['sections'] as List<dynamic>? ?? [];
-
-      // Obtener config de partes del curso
       final partsConfig =
           CourseConfig.getPartsForCourse(shortname, fullname: fullname);
 
-      // Verificar badges pendientes
+      // Mismo curso: progreso de partes + secciones de diagnóstico
       final newBadges = await badgeService.checkForNewBadges(
-        courseSections: courseSections,
+        courseSections: sections,
         coursePartsConfig: partsConfig,
-        diagnosticSections: diagnosticSections,
+        diagnosticSections: sections,
       );
 
       // Mostrar las insignias ganadas (una por una)
@@ -724,7 +727,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
   void _showSectionDetail(
       Map<String, dynamic> section, _DiagnosticCategory category) {
     final String sectionName = section['name']?.toString() ?? 'Sección';
-    final modules = section['modules'] as List<dynamic>? ?? [];
+    final modules = modulesWithoutVideo(
+        section['modules'] as List<dynamic>? ?? []);
 
     showModalBottomSheet(
       context: context,
@@ -973,15 +977,19 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
 class _DiagnosticCategory {
   final String title;
   final String subtitle;
+  final String levelKey;
   final IconData icon;
   final List<Color> gradientColors;
+  final int courseId;
   final List<int> sectionIds;
 
   const _DiagnosticCategory({
     required this.title,
     required this.subtitle,
+    required this.levelKey,
     required this.icon,
     required this.gradientColors,
+    required this.courseId,
     required this.sectionIds,
   });
 }
