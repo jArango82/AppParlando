@@ -354,6 +354,7 @@ class _GradesScreenState extends State<GradesScreen> {
       final modules = s['modules'] as List<dynamic>? ?? [];
       for (var m in modules) {
         final name = m['name']?.toString().toLowerCase() ?? '';
+        if (name.contains('video')) continue;
         if (name.contains('ejercicio')) {
           totalExercises++;
           if (m['completionState'] == 1 || m['completionState'] == 2) {
@@ -1339,6 +1340,7 @@ class _AllGradesSheetWidgetState extends State<_AllGradesSheetWidget> {
                         for (var m in modules) {
                           final name =
                               m['name']?.toString().toLowerCase() ?? '';
+                          if (name.contains('video')) continue;
                           if (name.contains('ejercicio') &&
                               m['grade'] != null &&
                               m['grade'] != '-') {

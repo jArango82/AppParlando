@@ -47,3 +47,42 @@ class CourseConfig {
     return {};
   }
 }
+
+/// Diagnósticos: viven en el mismo curso del nivel; cada "Parte" es una sección Moodle.
+class DiagnosticConfig {
+  static const Map<String, DiagnosticLevelConfig> levels = {
+    'A1': DiagnosticLevelConfig(
+      courseId: 7,
+      sectionIds: [51, 78, 103, 128],
+    ),
+    'A2': DiagnosticLevelConfig(
+      courseId: 11,
+      sectionIds: [29, 53, 81, 106, 131, 152],
+    ),
+    'B1': DiagnosticLevelConfig(
+      courseId: 12,
+      sectionIds: [24, 51, 76, 101, 128, 153],
+    ),
+    'B2': DiagnosticLevelConfig(
+      courseId: 13,
+      sectionIds: [27, 55, 83, 109, 135, 165],
+    ),
+  };
+
+  static DiagnosticLevelConfig? forLevel(String level) => levels[level];
+
+  static int? courseIdForLevel(String level) => levels[level]?.courseId;
+
+  /// Curso legado de diagnósticos (ya no se usa).
+  static const int legacyDiagnosticCourseId = 9;
+}
+
+class DiagnosticLevelConfig {
+  final int courseId;
+  final List<int> sectionIds;
+
+  const DiagnosticLevelConfig({
+    required this.courseId,
+    required this.sectionIds,
+  });
+}
