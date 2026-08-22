@@ -113,10 +113,6 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _showPasswordRecoverySheet() async {
-    final controller = TextEditingController(
-      text: _usernameController.text.trim(),
-    );
-
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -125,14 +121,16 @@ class _HomeScreenState extends State<HomeScreen>
         return Theme(
           data: ThemeProvider.lightTheme,
           child: _PasswordRecoverySheet(
-            initialController: controller,
-            onSubmit: (value) => AuthService().requestPasswordRecovery(value),
+            initialUsername: _usernameController.text.trim(),
+            onCompletedUsername: (username) {
+              if (username.isNotEmpty) {
+                _usernameController.text = username;
+              }
+            },
           ),
         );
       },
     );
-
-    controller.dispose();
   }
 
   Widget _buildLoginForm(BuildContext context) {
@@ -350,12 +348,12 @@ class _HomeScreenState extends State<HomeScreen>
 }
 
 class _PasswordRecoverySheet extends StatefulWidget {
-  final TextEditingController initialController;
-  final Future<Map<String, dynamic>> Function(String value) onSubmit;
+  final String initialUsername;
+  final ValueChanged<String>? onCompletedUsername;
 
   const _PasswordRecoverySheet({
-    required this.initialController,
-    required this.onSubmit,
+    required this.initialUsername,
+    this.onCompletedUsername,
   });
 
   @override
@@ -363,29 +361,61 @@ class _PasswordRecoverySheet extends StatefulWidget {
 }
 
 class _PasswordRecoverySheetState extends State<_PasswordRecoverySheet> {
-  late final TextEditingController _controller;
+  final _auth = AuthService();
+  final _usernameCtrl = TextEditingController();
+  final _documentCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  final _confirmCtrl = TextEditingController();
+  final List<TextEditingController> _otpCtrls =
+      List.generate(6, (_) => TextEditingController());
+  final List<FocusNode> _otpFocus = List.generate(6, (_) => FocusNode());
+
+  int _step = 1; // 1 datos, 2 código, 3 clave, 4 éxito
   bool _loading = false;
-  bool _success = false;
+  bool _obscurePass = true;
+  bool _obscureConfirm = true;
   String? _error;
-  String _submittedUser = '';
-  String? _destinationEmail;
+  String? _resetId;
+  String? _emailMasked;
+  String? _verifiedCode;
+  String? _resolvedUsername;
 
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: widget.initialController.text);
+    _usernameCtrl.text = widget.initialUsername;
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _usernameCtrl.dispose();
+    _documentCtrl.dispose();
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
+    _confirmCtrl.dispose();
+    for (final c in _otpCtrls) {
+      c.dispose();
+    }
+    for (final f in _otpFocus) {
+      f.dispose();
+    }
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    final value = _controller.text.trim();
-    if (value.isEmpty) {
-      setState(() => _error = 'Ingresa tu usuario o número de documento');
+  String get _otpCode => _otpCtrls.map((c) => c.text).join();
+
+  Future<void> _sendCode() async {
+    final username = _usernameCtrl.text.trim();
+    final document = _documentCtrl.text.trim();
+    final email = _emailCtrl.text.trim();
+
+    if (username.isEmpty || document.isEmpty || email.isEmpty) {
+      setState(() => _error = 'Completa usuario, documento y correo');
+      return;
+    }
+    if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)) {
+      setState(() => _error = 'Ingresa un correo válido');
       return;
     }
 
@@ -394,20 +424,154 @@ class _PasswordRecoverySheetState extends State<_PasswordRecoverySheet> {
       _error = null;
     });
 
-    final res = await widget.onSubmit(value);
+    final res = await _auth.sendPasswordResetCode(
+      username: username,
+      documentNumber: document,
+      email: email,
+    );
 
     if (!mounted) return;
 
     setState(() {
       _loading = false;
       if (res['success'] == true) {
-        _success = true;
-        _submittedUser = value;
-        _destinationEmail = res['to']?.toString();
+        _resetId = res['reset_id']?.toString();
+        _emailMasked =
+            res['email_masked']?.toString() ?? email;
+        _step = 2;
+        _error = null;
       } else {
-        _error = res['message']?.toString() ?? 'No se pudo enviar la solicitud';
+        _error = res['message']?.toString() ?? 'No se pudo enviar el código';
       }
     });
+
+    if (_step == 2) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _otpFocus.first.requestFocus();
+      });
+    }
+  }
+
+  Future<void> _verifyCode() async {
+    final code = _otpCode;
+    if (!RegExp(r'^\d{6}$').hasMatch(code)) {
+      setState(() => _error = 'Ingresa el código de 6 dígitos');
+      return;
+    }
+    if (_resetId == null) {
+      setState(() => _error = 'Solicita un nuevo código');
+      return;
+    }
+
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    final res = await _auth.verifyPasswordResetCode(
+      resetId: _resetId!,
+      code: code,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _loading = false;
+      if (res['success'] == true) {
+        _verifiedCode = code;
+        _step = 3;
+        _error = null;
+      } else {
+        _error = res['message']?.toString() ?? 'Código incorrecto';
+      }
+    });
+  }
+
+  Future<void> _resetPassword() async {
+    final password = _passwordCtrl.text;
+    final confirm = _confirmCtrl.text;
+    final minLen = AuthService.passwordResetMinLength;
+
+    if (password.length < minLen) {
+      setState(() =>
+          _error = 'La contraseña debe tener al menos $minLen caracteres');
+      return;
+    }
+    if (password != confirm) {
+      setState(() => _error = 'Las contraseñas no coinciden');
+      return;
+    }
+    if (_resetId == null || _verifiedCode == null) {
+      setState(() => _error = 'Solicita un nuevo código');
+      return;
+    }
+
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    final res = await _auth.resetPasswordWithCode(
+      resetId: _resetId!,
+      code: _verifiedCode!,
+      password: password,
+      passwordConfirm: confirm,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _loading = false;
+      if (res['success'] == true) {
+        _resolvedUsername =
+            res['username']?.toString() ?? _usernameCtrl.text.trim();
+        _step = 4;
+        _error = null;
+        widget.onCompletedUsername?.call(_resolvedUsername!);
+      } else {
+        _error = res['message']?.toString() ?? 'No se pudo guardar';
+      }
+    });
+  }
+
+  void _onOtpChanged(int index, String value) {
+    final digits = value.replaceAll(RegExp(r'\D'), '');
+    if (digits.isEmpty) {
+      _otpCtrls[index].clear();
+      setState(() {});
+      return;
+    }
+
+    if (digits.length > 1) {
+      // Pegado de varios dígitos
+      final chars = digits.split('');
+      for (var i = 0; i < 6; i++) {
+        _otpCtrls[i].text = i < chars.length ? chars[i] : '';
+      }
+      final focusIdx = chars.length >= 6 ? 5 : chars.length;
+      _otpFocus[focusIdx.clamp(0, 5)].requestFocus();
+      setState(() {});
+      return;
+    }
+
+    _otpCtrls[index].text = digits;
+    _otpCtrls[index].selection =
+        TextSelection.collapsed(offset: _otpCtrls[index].text.length);
+    if (index < 5) {
+      _otpFocus[index + 1].requestFocus();
+    }
+    setState(() {});
+  }
+
+  KeyEventResult _onOtpKey(int index, KeyEvent event) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.backspace &&
+        _otpCtrls[index].text.isEmpty &&
+        index > 0) {
+      _otpFocus[index - 1].requestFocus();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
   @override
@@ -428,7 +592,9 @@ class _PasswordRecoverySheetState extends State<_PasswordRecoverySheet> {
             child: AnimatedSize(
               duration: const Duration(milliseconds: 280),
               curve: Curves.easeOutCubic,
-              child: _success ? _buildSuccess() : _buildForm(),
+              child: SingleChildScrollView(
+                child: _buildStepContent(),
+              ),
             ),
           ),
         ),
@@ -436,144 +602,512 @@ class _PasswordRecoverySheetState extends State<_PasswordRecoverySheet> {
     );
   }
 
-  Widget _buildForm() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Center(
-          child: Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: LimpioTokens.line,
-              borderRadius: BorderRadius.circular(99),
-            ),
-          ),
+  Widget _buildStepContent() {
+    switch (_step) {
+      case 2:
+        return _buildCodeStep();
+      case 3:
+        return _buildPasswordStep();
+      case 4:
+        return _buildSuccess();
+      default:
+        return _buildIdentityStep();
+    }
+  }
+
+  Widget _buildHandle() {
+    return Center(
+      child: Container(
+        width: 40,
+        height: 4,
+        decoration: BoxDecoration(
+          color: LimpioTokens.line,
+          borderRadius: BorderRadius.circular(99),
         ),
-        const SizedBox(height: 20),
+      ),
+    );
+  }
+
+  Widget _buildStepsIndicator(int active) {
+    const labels = ['Datos', 'Código', 'Clave'];
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 4),
+      child: Row(
+        children: List.generate(labels.length * 2 - 1, (i) {
+          if (i.isOdd) {
+            return Expanded(
+              child: Container(
+                height: 2,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                color: (i ~/ 2) + 1 < active
+                    ? LimpioTokens.brand
+                    : LimpioTokens.line,
+              ),
+            );
+          }
+          final step = (i ~/ 2) + 1;
+          final done = step < active;
+          final current = step == active;
+          return Column(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: done || current
+                      ? LimpioTokens.brand
+                      : LimpioTokens.scaffold,
+                  border: Border.all(
+                    color: done || current
+                        ? LimpioTokens.brand
+                        : LimpioTokens.line,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: done
+                    ? const Icon(Icons.check_rounded,
+                        size: 16, color: Colors.white)
+                    : Text(
+                        '$step',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: current ? Colors.white : LimpioTokens.muted,
+                        ),
+                      ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                labels[step - 1],
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight:
+                      current ? FontWeight.w800 : FontWeight.w600,
+                  color: current || done
+                      ? LimpioTokens.brand
+                      : LimpioTokens.muted,
+                ),
+              ),
+            ],
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildHero({
+    required IconData icon,
+    required String eyebrow,
+    required String title,
+    required String subtitle,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         Container(
-          width: 64,
-          height: 64,
+          width: 56,
+          height: 56,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: LimpioTokens.brandSoft,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(18),
           ),
-          child: const Icon(
-            Icons.lock_reset_rounded,
+          child: Icon(icon, color: LimpioTokens.brand, size: 26),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          eyebrow.toUpperCase(),
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.6,
             color: LimpioTokens.brand,
-            size: 30,
           ),
         ),
-        const SizedBox(height: 18),
-        const Text(
-          'Recuperar contraseña',
-          style: TextStyle(
+        const SizedBox(height: 6),
+        Text(
+          title,
+          style: const TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w800,
             color: LimpioTokens.ink,
           ),
         ),
-        const SizedBox(height: 8),
-        const Text(
-          'Ingresa tu usuario o número de documento. Enviaremos la solicitud al correo de administración de Parlando para ayudarte a recuperar el acceso.',
-          style: TextStyle(
+        const SizedBox(height: 6),
+        Text(
+          subtitle,
+          style: const TextStyle(
             fontSize: 14,
-            height: 1.45,
+            height: 1.4,
             color: LimpioTokens.muted,
           ),
         ),
-        const SizedBox(height: 18),
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: LimpioTokens.scaffold,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: LimpioTokens.line),
-          ),
-          child: const Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(Icons.mail_outline_rounded,
-                  color: LimpioTokens.brand, size: 20),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'La solicitud llega a parlandolingue@gmail.com. Un asesor te contactará con tus datos de acceso.',
-                  style: TextStyle(
-                    fontSize: 13,
-                    height: 1.4,
-                    color: LimpioTokens.ink,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+      ],
+    );
+  }
+
+  InputDecoration _fieldDecoration({
+    required String label,
+    required String hint,
+    required IconData icon,
+    Widget? suffix,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      prefixIcon: Icon(icon, color: LimpioTokens.brand),
+      suffixIcon: suffix,
+      filled: true,
+      fillColor: LimpioTokens.scaffold,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
+      ),
+    );
+  }
+
+  Widget _buildError() {
+    if (_error == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Text(
+        _error!,
+        style: const TextStyle(
+          color: LimpioTokens.danger,
+          fontWeight: FontWeight.w600,
+          fontSize: 13,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPrimaryButton({
+    required String label,
+    required VoidCallback? onPressed,
+    IconData icon = Icons.arrow_forward_rounded,
+  }) {
+    return FilledButton.icon(
+      onPressed: _loading ? null : onPressed,
+      icon: _loading
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.2,
+                color: Colors.white,
               ),
-            ],
-          ),
+            )
+          : Icon(icon),
+      label: Text(
+        _loading ? 'Procesando...' : label,
+        style: const TextStyle(fontWeight: FontWeight.w800),
+      ),
+      style: FilledButton.styleFrom(
+        backgroundColor: LimpioTokens.brand,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
         ),
-        const SizedBox(height: 18),
+      ),
+    );
+  }
+
+  Widget _buildIdentityStep() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildHandle(),
+        const SizedBox(height: 16),
+        _buildHero(
+          icon: Icons.shield_outlined,
+          eyebrow: 'Seguridad de cuenta',
+          title: 'Recuperar contraseña',
+          subtitle:
+              'Confirma tu identidad y te enviaremos un código de verificación.',
+        ),
+        const SizedBox(height: 16),
+        _buildStepsIndicator(1),
+        const SizedBox(height: 16),
         TextField(
-          controller: _controller,
+          controller: _usernameCtrl,
           enabled: !_loading,
-          textInputAction: TextInputAction.done,
-          onSubmitted: (_) => _loading ? null : _submit(),
-          autofocus: true,
+          textInputAction: TextInputAction.next,
           style: const TextStyle(color: LimpioTokens.ink),
-          decoration: InputDecoration(
-            labelText: 'Usuario o documento',
-            hintText: 'Ej. juanma o 1234567890',
-            prefixIcon: const Icon(Icons.badge_outlined,
-                color: LimpioTokens.brand),
-            filled: true,
-            fillColor: LimpioTokens.scaffold,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide.none,
-            ),
+          decoration: _fieldDecoration(
+            label: 'Usuario',
+            hint: 'Tu usuario de Campus',
+            icon: Icons.person_outline_rounded,
           ),
         ),
-        if (_error != null) ...[
-          const SizedBox(height: 10),
-          Text(
-            _error!,
-            style: const TextStyle(
-              color: LimpioTokens.danger,
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-            ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _documentCtrl,
+          enabled: !_loading,
+          keyboardType: TextInputType.number,
+          textInputAction: TextInputAction.next,
+          style: const TextStyle(color: LimpioTokens.ink),
+          decoration: _fieldDecoration(
+            label: 'Número de documento',
+            hint: 'Documento de identidad',
+            icon: Icons.badge_outlined,
           ),
-        ],
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _emailCtrl,
+          enabled: !_loading,
+          keyboardType: TextInputType.emailAddress,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => _loading ? null : _sendCode(),
+          style: const TextStyle(color: LimpioTokens.ink),
+          decoration: _fieldDecoration(
+            label: 'Correo para el código',
+            hint: 'tunombre@correo.com',
+            icon: Icons.mail_outline_rounded,
+          ),
+        ),
+        _buildError(),
         const SizedBox(height: 20),
-        FilledButton.icon(
-          onPressed: _loading ? null : _submit,
-          icon: _loading
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.2,
-                    color: Colors.white,
-                  ),
-                )
-              : const Icon(Icons.send_rounded),
-          label: Text(
-            _loading ? 'Enviando solicitud...' : 'Solicitar restablecimiento',
-            style: const TextStyle(fontWeight: FontWeight.w800),
-          ),
-          style: FilledButton.styleFrom(
-            backgroundColor: LimpioTokens.brand,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-          ),
+        _buildPrimaryButton(
+          label: 'Continuar',
+          onPressed: _sendCode,
         ),
-        const SizedBox(height: 8),
         TextButton(
           onPressed: _loading ? null : () => Navigator.pop(context),
           child: const Text(
             'Cancelar',
+            style: TextStyle(
+              color: LimpioTokens.muted,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCodeStep() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildHandle(),
+        const SizedBox(height: 16),
+        _buildHero(
+          icon: Icons.key_rounded,
+          eyebrow: 'Verificación',
+          title: 'Ingresa el código',
+          subtitle:
+              'Revisa tu correo e introduce los 6 dígitos que te enviamos.',
+        ),
+        const SizedBox(height: 16),
+        _buildStepsIndicator(2),
+        const SizedBox(height: 14),
+        if (_emailMasked != null)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: LimpioTokens.brandSoft,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.mark_email_read_outlined,
+                    color: LimpioTokens.brand, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _emailMasked!,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: LimpioTokens.ink,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            for (var i = 0; i < 6; i++) ...[
+              if (i == 3) const SizedBox(width: 10),
+              Expanded(
+                child: Focus(
+                  onKeyEvent: (_, event) => _onOtpKey(i, event),
+                  child: TextField(
+                    controller: _otpCtrls[i],
+                    focusNode: _otpFocus[i],
+                    enabled: !_loading,
+                    textAlign: TextAlign.center,
+                    keyboardType: TextInputType.number,
+                    maxLength: 6,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: LimpioTokens.ink,
+                    ),
+                    decoration: InputDecoration(
+                      counterText: '',
+                      filled: true,
+                      fillColor: LimpioTokens.scaffold,
+                      contentPadding:
+                          const EdgeInsets.symmetric(vertical: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: _otpCtrls[i].text.isNotEmpty
+                              ? LimpioTokens.brand
+                              : LimpioTokens.line,
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: _otpCtrls[i].text.isNotEmpty
+                              ? LimpioTokens.brand
+                              : LimpioTokens.line,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: LimpioTokens.brand,
+                          width: 1.6,
+                        ),
+                      ),
+                    ),
+                    onChanged: (v) => _onOtpChanged(i, v),
+                  ),
+                ),
+              ),
+              if (i != 2 && i != 5) const SizedBox(width: 6),
+            ],
+          ],
+        ),
+        const SizedBox(height: 10),
+        const Row(
+          children: [
+            Icon(Icons.schedule_rounded, size: 16, color: LimpioTokens.muted),
+            SizedBox(width: 6),
+            Text(
+              'El código caduca en 10 minutos',
+              style: TextStyle(
+                fontSize: 12,
+                color: LimpioTokens.muted,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        _buildError(),
+        const SizedBox(height: 20),
+        _buildPrimaryButton(
+          label: 'Verificar código',
+          icon: Icons.verified_rounded,
+          onPressed: _verifyCode,
+        ),
+        TextButton(
+          onPressed: _loading
+              ? null
+              : () => setState(() {
+                    _step = 1;
+                    _error = null;
+                  }),
+          child: const Text(
+            'Volver',
+            style: TextStyle(
+              color: LimpioTokens.muted,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPasswordStep() {
+    final minLen = AuthService.passwordResetMinLength;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildHandle(),
+        const SizedBox(height: 16),
+        _buildHero(
+          icon: Icons.lock_rounded,
+          eyebrow: 'Nueva clave',
+          title: 'Crea tu contraseña',
+          subtitle:
+              'Mínimo $minLen caracteres. Servirá para entrar al Campus.',
+        ),
+        const SizedBox(height: 16),
+        _buildStepsIndicator(3),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _passwordCtrl,
+          enabled: !_loading,
+          obscureText: _obscurePass,
+          textInputAction: TextInputAction.next,
+          style: const TextStyle(color: LimpioTokens.ink),
+          decoration: _fieldDecoration(
+            label: 'Nueva contraseña',
+            hint: 'Mínimo $minLen caracteres',
+            icon: Icons.lock_outline_rounded,
+            suffix: IconButton(
+              onPressed: () => setState(() => _obscurePass = !_obscurePass),
+              icon: Icon(
+                _obscurePass
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+                color: LimpioTokens.muted,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _confirmCtrl,
+          enabled: !_loading,
+          obscureText: _obscureConfirm,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => _loading ? null : _resetPassword(),
+          style: const TextStyle(color: LimpioTokens.ink),
+          decoration: _fieldDecoration(
+            label: 'Confirmar contraseña',
+            hint: 'Repite la contraseña',
+            icon: Icons.verified_user_outlined,
+            suffix: IconButton(
+              onPressed: () =>
+                  setState(() => _obscureConfirm = !_obscureConfirm),
+              icon: Icon(
+                _obscureConfirm
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+                color: LimpioTokens.muted,
+              ),
+            ),
+          ),
+        ),
+        _buildError(),
+        const SizedBox(height: 20),
+        _buildPrimaryButton(
+          label: 'Guardar e iniciar',
+          icon: Icons.check_rounded,
+          onPressed: _resetPassword,
+        ),
+        TextButton(
+          onPressed: _loading
+              ? null
+              : () => setState(() {
+                    _step = 2;
+                    _error = null;
+                  }),
+          child: const Text(
+            'Volver',
             style: TextStyle(
               color: LimpioTokens.muted,
               fontWeight: FontWeight.w700,
@@ -589,22 +1123,10 @@ class _PasswordRecoverySheetState extends State<_PasswordRecoverySheet> {
       mainAxisSize: MainAxisSize.min,
       children: [
         const SizedBox(height: 8),
-        Container(
-          width: 72,
-          height: 72,
-          decoration: BoxDecoration(
-            color: LimpioTokens.success.withValues(alpha: 0.12),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(
-            Icons.check_circle_rounded,
-            color: LimpioTokens.success,
-            size: 40,
-          ),
-        ),
+        const _AnimatedSuccessCheck(),
         const SizedBox(height: 18),
         const Text(
-          '¡Solicitud enviada!',
+          '¡Listo!',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 22,
@@ -613,43 +1135,16 @@ class _PasswordRecoverySheetState extends State<_PasswordRecoverySheet> {
           ),
         ),
         const SizedBox(height: 10),
-        Text.rich(
-          TextSpan(
-            style: const TextStyle(
-              fontSize: 14,
-              height: 1.45,
-              color: LimpioTokens.muted,
-            ),
-            children: [
-              const TextSpan(
-                text:
-                    'Se envió la solicitud de restablecimiento para ',
-              ),
-              TextSpan(
-                text: _submittedUser,
-                style: const TextStyle(
-                  color: LimpioTokens.ink,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              if (_destinationEmail != null) ...[
-                const TextSpan(text: ' a '),
-                TextSpan(
-                  text: _destinationEmail,
-                  style: const TextStyle(
-                    color: LimpioTokens.brand,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const TextSpan(text: '.'),
-              ] else
-                const TextSpan(
-                  text:
-                      '. Revisa el correo de administración (y spam).',
-                ),
-            ],
-          ),
+        Text(
+          _resolvedUsername == null
+              ? 'Tu contraseña fue actualizada. Ya puedes iniciar sesión.'
+              : 'Tu contraseña fue actualizada. Ya puedes iniciar sesión como $_resolvedUsername.',
           textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 14,
+            height: 1.45,
+            color: LimpioTokens.muted,
+          ),
         ),
         const SizedBox(height: 22),
         SizedBox(
@@ -670,6 +1165,124 @@ class _PasswordRecoverySheetState extends State<_PasswordRecoverySheet> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _AnimatedSuccessCheck extends StatefulWidget {
+  const _AnimatedSuccessCheck();
+
+  @override
+  State<_AnimatedSuccessCheck> createState() => _AnimatedSuccessCheckState();
+}
+
+class _AnimatedSuccessCheckState extends State<_AnimatedSuccessCheck>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scale;
+  late final Animation<double> _fade;
+  late final Animation<double> _ring;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+
+    _scale = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(begin: 0.0, end: 1.18)
+            .chain(CurveTween(curve: Curves.easeOutBack)),
+        weight: 55,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 1.18, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 45,
+      ),
+    ]).animate(_controller);
+
+    _fade = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.45, curve: Curves.easeOut),
+    );
+
+    _ring = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(begin: 0.55, end: 1.55)
+            .chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 70,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 1.55, end: 1.7)
+            .chain(CurveTween(curve: Curves.easeOut)),
+        weight: 30,
+      ),
+    ]).animate(_controller);
+
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final ringOpacity =
+            (1.0 - _controller.value).clamp(0.0, 1.0) * 0.35;
+        return SizedBox(
+          width: 96,
+          height: 96,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Transform.scale(
+                scale: _ring.value,
+                child: Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: LimpioTokens.success
+                          .withValues(alpha: ringOpacity),
+                      width: 3,
+                    ),
+                  ),
+                ),
+              ),
+              FadeTransition(
+                opacity: _fade,
+                child: ScaleTransition(
+                  scale: _scale,
+                  child: child,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+      child: Container(
+        width: 72,
+        height: 72,
+        decoration: BoxDecoration(
+          color: LimpioTokens.success.withValues(alpha: 0.12),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(
+          Icons.check_circle_rounded,
+          color: LimpioTokens.success,
+          size: 44,
+        ),
+      ),
     );
   }
 }

@@ -53,6 +53,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: Color(0xFF2A60E4)),

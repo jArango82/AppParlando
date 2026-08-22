@@ -148,7 +148,7 @@ class _BalloonCloudLoadingIndicatorState
           // Tiñe sin ColorFiltered (evita parpadeos negros en algunos devices)
           color: tint,
           colorBlendMode: BlendMode.modulate,
-          errorBuilder: (_, __, ___) => Icon(
+          errorBuilder: (_, _, _) => Icon(
             Icons.cloud,
             size: width * 0.5,
             color: tint,

@@ -343,6 +343,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               elevation: 0,
               scrolledUnderElevation: 0,
               centerTitle: false,
+              automaticallyImplyLeading: false,
               iconTheme: IconThemeData(color: context.textColor),
             ),
             body: Center(

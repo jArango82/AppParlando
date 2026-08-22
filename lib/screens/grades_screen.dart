@@ -133,6 +133,7 @@ class _GradesScreenState extends State<GradesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = context.isWideScreen;
     return Scaffold(
       backgroundColor: context.bgScaffold,
       appBar: AppBar(
@@ -147,6 +148,7 @@ class _GradesScreenState extends State<GradesScreen> {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: LimpioTokens.brand),
@@ -156,16 +158,20 @@ class _GradesScreenState extends State<GradesScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: Center(
+      body: Align(
+        alignment: Alignment.topCenter,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (!_isLoading && _error == null && _courses.isNotEmpty)
-                _buildCourseChips(),
-              Expanded(child: _buildBody()),
-            ],
+          constraints: BoxConstraints(maxWidth: isWide ? 1100 : 800),
+          child: SizedBox(
+            width: double.infinity,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (!_isLoading && _error == null && _courses.isNotEmpty)
+                  _buildCourseChips(),
+                Expanded(child: _buildBody()),
+              ],
+            ),
           ),
         ),
       ),
@@ -440,118 +446,88 @@ class _GradesScreenState extends State<GradesScreen> {
 
     final bool isWide = context.isWideScreen;
 
+    // En iPad/tablet el layout de dos columnas comprimía el texto de
+    // evaluaciones; usamos el listado a ancho completo.
     if (isWide) {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Panel Izquierdo: Resúmenes y Gráfico
-          Expanded(
-            flex: 6,
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 16, 10, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildSummaryCard(
-                          title: 'Nota Promedio',
-                          value: '$avgGrade%',
-                          icon: Icons.auto_graph_rounded,
-                          iconColor: LimpioTokens.brand,
-                          subtitle: 'Del curso actual',
-                          subtitleColor: context.subtitleColor,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildSummaryCard(
-                          title: 'Unidades Listas',
-                          value: '$completedExercises',
-                          suffix: ' / $totalExercises',
-                          icon: Icons.school_rounded,
-                          iconColor: LimpioTokens.purple,
-                          progress: totalExercises > 0
-                              ? completedExercises / totalExercises
-                              : 0.0,
-                          gradient: gradient,
-                        ),
-                      ),
-                    ],
+      return SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _buildSummaryCard(
+                    title: 'Nota Promedio',
+                    value: '$avgGrade%',
+                    icon: Icons.auto_graph_rounded,
+                    iconColor: LimpioTokens.brand,
+                    subtitle: 'Del curso actual',
+                    subtitleColor: context.subtitleColor,
                   ),
-                  const SizedBox(height: 24),
-                  _buildProgressTrendCard(level, gradient, partsAverages),
-                ],
-              ),
-            ),
-          ),
-          // Panel Derecho: Evaluaciones Recientes
-          Expanded(
-            flex: 4,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(10, 16, 20, 24),
-              child: LimpioCard(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Evaluaciones',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: context.textColor,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => _showAllGradesSheet(context, gradient),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 4, horizontal: 8),
-                            child: Text(
-                              'Ver Todo',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: gradient[0],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Expanded(
-                      child: allGradedModules.isEmpty
-                          ? Center(
-                              child: Text(
-                                'Aún no tienes notas recientes.',
-                                style: TextStyle(color: context.subtitleColor),
-                              ),
-                            )
-                          : ListView.builder(
-                              physics: const BouncingScrollPhysics(),
-                              itemCount: allGradedModules.length > 10
-                                  ? 10
-                                  : allGradedModules.length,
-                              itemBuilder: (context, index) {
-                                final m =
-                                    allGradedModules.reversed.toList()[index];
-                                return _buildRecentAssessmentCard(m);
-                              },
-                            ),
-                    ),
-                  ],
                 ),
-              ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildSummaryCard(
+                    title: 'Unidades Listas',
+                    value: '$completedExercises',
+                    suffix: ' / $totalExercises',
+                    icon: Icons.school_rounded,
+                    iconColor: LimpioTokens.purple,
+                    progress: totalExercises > 0
+                        ? completedExercises / totalExercises
+                        : 0.0,
+                    gradient: gradient,
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
+            const SizedBox(height: 24),
+            _buildProgressTrendCard(level, gradient, partsAverages),
+            const SizedBox(height: 28),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Evaluaciones',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: context.textColor,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => _showAllGradesSheet(context, gradient),
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                    child: Text(
+                      'Ver Todo',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: gradient[0],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (allGradedModules.isEmpty)
+              LimpioCard(
+                child: Text(
+                  'Aún no tienes notas recientes.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: context.subtitleColor),
+                ),
+              )
+            else
+              ...allGradedModules.reversed.take(10).map(_buildRecentAssessmentCard),
+            const SizedBox(height: 32),
+          ],
+        ),
       );
     }
 
@@ -972,6 +948,9 @@ class _GradesScreenState extends State<GradesScreen> {
                 children: [
                   Text(
                     name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    softWrap: true,
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -981,6 +960,8 @@ class _GradesScreenState extends State<GradesScreen> {
                   const SizedBox(height: 4),
                   Text(
                     'Evaluación reciente',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 12,
                       color: context.subtitleColor,
@@ -989,6 +970,7 @@ class _GradesScreenState extends State<GradesScreen> {
                 ],
               ),
             ),
+            const SizedBox(width: 12),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(

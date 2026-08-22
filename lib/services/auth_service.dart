@@ -274,50 +274,49 @@ class AuthService {
     return null;
   }
 
-  /// Solicita recuperación de contraseña (mismo flujo que estudiantes.html).
-  /// Envía la solicitud a administración vía recover_estudiantes_password.php.
-  Future<Map<String, dynamic>> requestPasswordRecovery(String usernameOrDocument) async {
-    final value = usernameOrDocument.trim();
-    if (value.isEmpty) {
-      return {
-        'success': false,
-        'message': 'Ingresa tu usuario o número de documento',
-      };
-    }
+  static const String _passwordResetUrl =
+      'https://parlandolingue.com/assets/php/recover_estudiantes_password.php';
+  static const int passwordResetMinLength = 8;
 
+  Future<Map<String, dynamic>> _passwordResetApi(
+    Map<String, dynamic> payload,
+  ) async {
     try {
       final response = await http.post(
-        Uri.parse(
-          'https://parlandolingue.com/assets/php/recover_estudiantes_password.php',
-        ),
+        Uri.parse(_passwordResetUrl),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({'username': value}),
+        body: json.encode(payload),
       );
 
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception('No se pudo contactar al servidor (${response.statusCode})');
-      }
-
-      final data = json.decode(response.body);
-      if (data is Map && data['success'] == true) {
-        final to = data['to']?.toString();
+      Map<String, dynamic>? data;
+      try {
+        final decoded = json.decode(response.body);
+        if (decoded is Map) {
+          data = Map<String, dynamic>.from(decoded);
+        }
+      } catch (_) {
         return {
-          'success': true,
-          'sent': data['sent'] == true,
-          'to': to,
-          'message': data['message']?.toString() ??
-              (to != null
-                  ? 'Solicitud enviada a $to'
-                  : 'Solicitud enviada a administración'),
-          'username': value,
+          'success': false,
+          'message': 'Respuesta inválida del servidor',
         };
       }
 
+      if (data == null) {
+        return {
+          'success': false,
+          'message': 'Respuesta inválida del servidor',
+        };
+      }
+
+      if (data['success'] == true) {
+        return data;
+      }
+
       return {
         'success': false,
-        'message': (data is Map ? data['message'] : null)?.toString() ??
-            'No se pudo enviar la solicitud',
-        'to': data is Map ? data['to']?.toString() : null,
+        'message': data['message']?.toString() ??
+            'No se pudo completar la solicitud',
+        'attempts_left': data['attempts_left'],
       };
     } catch (e) {
       return {
@@ -325,5 +324,47 @@ class AuthService {
         'message': e.toString().replaceAll('Exception: ', ''),
       };
     }
+  }
+
+  /// Paso 1: envía código OTP al correo del estudiante.
+  Future<Map<String, dynamic>> sendPasswordResetCode({
+    required String username,
+    required String documentNumber,
+    required String email,
+  }) {
+    return _passwordResetApi({
+      'action': 'send_code',
+      'username': username.trim(),
+      'document_number': documentNumber.trim(),
+      'email': email.trim(),
+    });
+  }
+
+  /// Paso 2: verifica el código de 6 dígitos.
+  Future<Map<String, dynamic>> verifyPasswordResetCode({
+    required String resetId,
+    required String code,
+  }) {
+    return _passwordResetApi({
+      'action': 'verify_code',
+      'reset_id': resetId,
+      'code': code.trim(),
+    });
+  }
+
+  /// Paso 3: guarda la nueva contraseña en Campus y BD local.
+  Future<Map<String, dynamic>> resetPasswordWithCode({
+    required String resetId,
+    required String code,
+    required String password,
+    required String passwordConfirm,
+  }) {
+    return _passwordResetApi({
+      'action': 'reset_password',
+      'reset_id': resetId,
+      'code': code.trim(),
+      'password': password,
+      'password_confirm': passwordConfirm,
+    });
   }
 }

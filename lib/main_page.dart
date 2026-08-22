@@ -52,7 +52,6 @@ class _MainPageState extends State<MainPage> {
       ];
 
   Widget _buildRail(BuildContext context) {
-    final isDark = context.isDarkMode;
     return Container(
       width: 96,
       decoration: BoxDecoration(
@@ -63,18 +62,7 @@ class _MainPageState extends State<MainPage> {
         right: false,
         child: Column(
           children: [
-            const SizedBox(height: 20),
-            Image.asset(
-              'assets/logo_001.webp',
-              width: 48,
-              height: 48,
-              errorBuilder: (context, error, stackTrace) => const Icon(
-                Icons.school_rounded,
-                color: LimpioTokens.brand,
-                size: 40,
-              ),
-            ),
-            const Spacer(),
+            const SizedBox(height: 28),
             ...List.generate(_tabs.length, (index) {
               final selected = _selectedIndex == index;
               final color =
@@ -115,10 +103,7 @@ class _MainPageState extends State<MainPage> {
               );
             }),
             const Spacer(),
-            if (isDark)
-              const SizedBox(height: 12)
-            else
-              const SizedBox(height: 12),
+            const SizedBox(height: 12),
           ],
         ),
       ),

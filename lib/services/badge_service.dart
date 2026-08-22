@@ -476,7 +476,7 @@ class BadgeService {
       // Determinar la configuración usando CourseConfig
       final coursePartsConfig = CourseConfig.getPartsForCourse(shortname, fullname: fullname);
 
-      return checkForNewBadges(
+      return await checkForNewBadges(
         courseSections: courseSections,
         coursePartsConfig: coursePartsConfig,
         diagnosticSections: diagnosticSections,

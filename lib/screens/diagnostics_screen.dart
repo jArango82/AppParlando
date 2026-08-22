@@ -149,6 +149,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: LimpioTokens.brand),

@@ -32,6 +32,7 @@ class MainApp extends StatelessWidget {
       builder: (context, themeMode, _) {
         return MaterialApp(
           title: 'App Parlando',
+          debugShowCheckedModeBanner: false,
           theme: ThemeProvider.lightTheme,
           darkTheme: ThemeProvider.darkTheme,
           themeMode: themeMode,
