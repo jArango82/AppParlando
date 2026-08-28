@@ -2483,10 +2483,11 @@ class PracticeBank {
     if (shuffle) {
       filtered.shuffle(Random());
     }
-    if (limit != null && limit < filtered.length) {
-      return filtered.take(limit).toList();
-    }
-    return filtered;
+    final selected = limit != null && limit < filtered.length
+        ? filtered.take(limit).toList()
+        : filtered;
+
+    return selected.map((e) => e.withShuffledOptions()).toList();
   }
 
   static int countFor(PracticeCategory category, String level) {

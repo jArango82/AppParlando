@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 enum PracticeCategory {
@@ -92,6 +94,23 @@ class PracticeExercise {
     final a = _norm(userAnswer);
     final b = _norm(answer);
     return a == b;
+  }
+
+  /// Devuelve una copia del ejercicio con las opciones en orden aleatorio.
+  PracticeExercise withShuffledOptions([Random? random]) {
+    final shuffledOptions = List<String>.from(options)
+      ..shuffle(random ?? Random());
+    return PracticeExercise(
+      id: id,
+      level: level,
+      category: category,
+      type: type,
+      instruction: instruction,
+      prompt: prompt,
+      options: shuffledOptions,
+      answer: answer,
+      explanation: explanation,
+    );
   }
 
   static String _norm(String s) =>

@@ -10,6 +10,7 @@ import '../services/student_messages_service.dart';
 import '../models/practice_exercise.dart';
 import 'course_details_screen.dart';
 import 'practice/practice_level_select_screen.dart';
+import 'schedule/schedule_classes_screen.dart';
 import '../widgets/custom_loading_indicator.dart';
 import '../widgets/limpio_card.dart';
 import '../theme_provider.dart';
@@ -304,6 +305,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
                     // ── MENSAJES DEL ASESOR ──────────────
                     _buildMessagesSection(context),
+                    const SizedBox(height: 24),
+
+                    // ── AGENDAR CLASES ───────────────────
+                    _buildScheduleEntry(context),
                     const SizedBox(height: 24),
 
                     // ── PRÁCTICA RÁPIDA ──────────────────
@@ -718,6 +723,118 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             ],
           ],
         ],
+      ),
+    );
+  }
+
+  // ── AGENDAR CLASES ───────────────────────────────────────────
+
+  Widget _buildScheduleEntry(BuildContext context) {
+    const accent = Color(0xFF1FAB5E);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _studentId == null
+            ? null
+            : () {
+                Navigator.of(context).push(
+                  PageRouteBuilder(
+                    pageBuilder: (_, animation, _) =>
+                        ScheduleClassesScreen(studentId: _studentId!),
+                    transitionsBuilder: (_, animation, _, child) {
+                      final curved = CurvedAnimation(
+                        parent: animation,
+                        curve: Curves.easeOutCubic,
+                      );
+                      return FadeTransition(
+                        opacity: curved,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0, 0.04),
+                            end: Offset.zero,
+                          ).animate(curved),
+                          child: child,
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+        borderRadius: BorderRadius.circular(20),
+        child: Ink(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: context.cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: context.borderColor),
+            boxShadow: [
+              BoxShadow(
+                color: context.shadowColor,
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      accent.withValues(alpha: 0.15),
+                      accent.withValues(alpha: 0.05),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.calendar_month_rounded,
+                  color: accent,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Agendar mis clases',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                        color: context.textColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _studentId == null
+                          ? 'Perfil de estudiante no disponible'
+                          : 'Reserva tu horario semanal en salones disponibles',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: context.subtitleColor,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 16,
+                color: _studentId == null
+                    ? context.subtitleColor.withValues(alpha: 0.4)
+                    : accent,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
