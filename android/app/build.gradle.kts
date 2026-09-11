@@ -14,9 +14,13 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
+// Android 16 (API level 36)
+val androidCompileSdk = 36
+val androidTargetSdk = 36
+
 android {
-    namespace = "com.parlandolingue.app"
-    compileSdk = 36
+    namespace = "com.parlando.app_parlando"
+    compileSdk = androidCompileSdk
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -30,9 +34,9 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.parlandolingue.app"
+        applicationId = "com.parlando.app_parlando"
         minSdk = flutter.minSdkVersion
-        targetSdk = 36
+        targetSdk = androidTargetSdk
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true
@@ -67,6 +71,7 @@ android {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    implementation("androidx.core:core-ktx:1.15.0")
 }
 
 flutter {
