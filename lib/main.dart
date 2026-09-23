@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'splash_screen.dart';
 import 'services/notification_service.dart';
+import 'services/push_notification_service.dart';
 import 'theme_provider.dart';
 
 void main() async {
@@ -12,6 +13,9 @@ void main() async {
 
   // Inicializar el servicio de notificaciones locales
   await NotificationService().initialize();
+
+  // Firebase / FCM (fase 1: solo Android)
+  await PushNotificationService().initialize();
 
   // Inicializar el tema (lee preferencia de SharedPreferences)
   await ThemeProvider.init();

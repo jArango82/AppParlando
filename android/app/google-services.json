@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "104921263173",
+    "project_id": "appparlando",
+    "storage_bucket": "appparlando.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:104921263173:android:4da342335158808304c72c",
+        "android_client_info": {
+          "package_name": "com.parlando.app_parlando"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAwmLJSLpp7lBbB6LeCMrEVqf4YSD8Z8uU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

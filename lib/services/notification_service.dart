@@ -40,6 +40,20 @@ class NotificationService {
 
     await _flutterLocalNotificationsPlugin.initialize(initSettings);
 
+    // Canal FCM / push de cupos (debe existir en Android 8+)
+    await _flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(
+          const AndroidNotificationChannel(
+            'parlando_push',
+            'Avisos de cupos',
+            description:
+                'Notificaciones cuando hay salón disponible para matricularte',
+            importance: Importance.high,
+          ),
+        );
+
     // Solicitar permiso de notificaciones (Android 13+)
     await _flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<
@@ -55,6 +69,49 @@ class NotificationService {
           badge: true,
           sound: true,
         );
+  }
+
+  /// Solicita permiso de notificaciones en Android 13+ (POST_NOTIFICATIONS).
+  Future<bool> requestAndroidNotificationsPermission() async {
+    final android = _flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    if (android == null) return true;
+    final granted = await android.requestNotificationsPermission();
+    return granted ?? false;
+  }
+
+  /// Muestra un aviso push recibido (p. ej. FCM en foreground).
+  Future<void> showPushAlert({
+    required String title,
+    required String body,
+  }) async {
+    const androidDetails = AndroidNotificationDetails(
+      'parlando_push',
+      'Avisos de cupos',
+      channelDescription:
+          'Notificaciones cuando hay salón disponible para matricularte',
+      importance: Importance.high,
+      priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
+      icon: '@mipmap/launcher_icon',
+    );
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+    await _flutterLocalNotificationsPlugin.show(
+      2001,
+      title,
+      body,
+      details,
+    );
   }
 
   /// Verifica si deben mostrarse notificaciones de contrato y las muestra si corresponde.

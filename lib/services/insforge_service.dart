@@ -110,13 +110,16 @@ class InsforgeService {
 
   /// Upsert (insert o update en conflicto) de registros.
   ///
-  /// Usa el header `Prefer: resolution=merge-duplicates` para hacer upsert
-  /// basado en la primary key de la tabla.
+  /// Usa el header `Prefer: resolution=merge-duplicates` para hacer upsert.
+  /// [onConflict]: columna(s) de conflicto PostgREST (ej. `student_id`).
   Future<List<Map<String, dynamic>>> upsert(
     String table,
-    List<Map<String, dynamic>> records,
-  ) async {
-    final uri = Uri.parse('$baseUrl/api/database/records/$table');
+    List<Map<String, dynamic>> records, {
+    String? onConflict,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/database/records/$table').replace(
+      queryParameters: onConflict != null ? {'on_conflict': onConflict} : null,
+    );
     final headers = {
       ..._headers,
       'Prefer': 'resolution=merge-duplicates,return=representation',

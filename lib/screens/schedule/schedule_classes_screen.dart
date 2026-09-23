@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../models/schedule_models.dart';
+import '../../services/schedule_reminder_service.dart';
 import '../../services/schedule_service.dart';
 import '../../theme_provider.dart';
 import '../../widgets/custom_loading_indicator.dart';
 import '../../widgets/limpio_card.dart';
+import 'schedule_reminders_sheet.dart';
 
 /// Pantalla de auto-agendamiento de clases semanales.
 class ScheduleClassesScreen extends StatefulWidget {
@@ -24,6 +26,7 @@ class _ScheduleClassesScreenState extends State<ScheduleClassesScreen>
   static const _danger = Color(0xFFE74C3C);
 
   final _scheduleService = ScheduleService();
+  final _reminderService = ScheduleReminderService();
 
   int _weekOffset = 1;
   String _activeDay = 'lunes';
@@ -31,6 +34,7 @@ class _ScheduleClassesScreenState extends State<ScheduleClassesScreen>
   bool _loading = true;
   String? _error;
   String? _pendingRoomId;
+  bool _remindersActive = false;
   late final AnimationController _enterController;
 
   @override
@@ -41,6 +45,7 @@ class _ScheduleClassesScreenState extends State<ScheduleClassesScreen>
       duration: const Duration(milliseconds: 420),
     )..forward();
     _loadWeek();
+    _loadReminderFlag();
   }
 
   @override
@@ -87,6 +92,26 @@ class _ScheduleClassesScreenState extends State<ScheduleClassesScreen>
     HapticFeedback.selectionClick();
     setState(() => _weekOffset = offset);
     _loadWeek(forceRefresh: true);
+  }
+
+  Future<void> _loadReminderFlag() async {
+    final settings = await _reminderService.load(widget.studentId);
+    if (!mounted) return;
+    setState(() => _remindersActive = settings.hasActiveReminders);
+  }
+
+  Future<void> _openReminders() async {
+    HapticFeedback.selectionClick();
+    final result = await ScheduleRemindersSheet.show(
+      context,
+      studentId: widget.studentId,
+    );
+    if (!mounted) return;
+    if (result != null) {
+      setState(() => _remindersActive = result.hasActiveReminders);
+    } else {
+      await _loadReminderFlag();
+    }
   }
 
   Future<void> _onAction({
@@ -175,6 +200,18 @@ class _ScheduleClassesScreenState extends State<ScheduleClassesScreen>
           style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
         ),
         centerTitle: false,
+        actions: [
+          IconButton(
+            tooltip: 'Recordatorios de cupos',
+            onPressed: _openReminders,
+            icon: Icon(
+              _remindersActive
+                  ? Icons.notifications_active_rounded
+                  : Icons.notifications_none_rounded,
+              color: _remindersActive ? _brand : null,
+            ),
+          ),
+        ],
       ),
       body: FadeTransition(
         opacity: CurvedAnimation(
@@ -308,6 +345,62 @@ class _ScheduleClassesScreenState extends State<ScheduleClassesScreen>
               ],
             ),
           ],
+          const SizedBox(height: 14),
+          Material(
+            color: _remindersActive
+                ? _brand.withValues(alpha: 0.08)
+                : context.isDarkMode
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : const Color(0xFFF3F5F9),
+            borderRadius: BorderRadius.circular(14),
+            child: InkWell(
+              onTap: _openReminders,
+              borderRadius: BorderRadius.circular(14),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                child: Row(
+                  children: [
+                    Icon(
+                      _remindersActive
+                          ? Icons.notifications_active_rounded
+                          : Icons.notifications_none_rounded,
+                      color: _remindersActive ? _brand : context.subtitleColor,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Avisarme cuando haya cupo',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13.5,
+                              color: context.textColor,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _remindersActive
+                                ? 'Recordatorios activos'
+                                : 'Configura días y horarios',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: context.subtitleColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.chevron_right_rounded,
+                        color: context.subtitleColor),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

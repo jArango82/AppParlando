@@ -17,6 +17,9 @@ import flutter_local_notifications
       UNUserNotificationCenter.current().delegate = self as UNUserNotificationCenterDelegate
     }
 
+    // Necesario para recibir remote notifications / FCM en iOS
+    application.registerForRemoteNotifications()
+
     GeneratedPluginRegistrant.register(with: self)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
