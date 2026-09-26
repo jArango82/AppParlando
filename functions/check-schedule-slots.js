@@ -23,6 +23,15 @@ const SCHEDULE_API =
 
 const COOLDOWN_MS = 3 * 60 * 60 * 1000; // 3 h entre avisos por estudiante
 
+const DAY_LABELS = {
+  lunes: 'Lunes',
+  martes: 'Martes',
+  miercoles: 'Miércoles',
+  jueves: 'Jueves',
+  viernes: 'Viernes',
+  sabado: 'Sábado',
+};
+
 function insforgeBaseUrl() {
   return (
     Deno.env.get('INSFORGE_BASE_URL') ??
@@ -277,10 +286,11 @@ export default async function (req) {
         continue;
       }
 
-      const title = 'Cupo disponible';
+      const dayLabel = DAY_LABELS[first.dayKey] ?? first.dayKey;
+      const title = '¡Se liberó un cupo!';
       const body =
-        `Hay un salón libre: ${first.dayKey} ${first.slot} (${first.roomName}). ` +
-        'Ábrelo para matricularte.';
+        `${dayLabel}, ${first.slot} en el salón ${first.roomName}. ` +
+        'Entra a Parlando para agendarte antes de que se ocupe.';
 
       try {
         const messageId = await sendPushAdmin(messaging, {

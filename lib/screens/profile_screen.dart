@@ -238,14 +238,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
          setState(() {
            _isUploadingImage = false;
          });
-         final String raw = e.toString();
-         final String message = raw.contains('Deno Deploy Classic') ||
-                 raw.contains('upload-avatar está caída')
-             ? 'No se pudo subir la foto: la función de InsForge está fuera de servicio. Actualiza el proyecto a v2.2.2 y vuelve a desplegar upload-avatar.'
-             : 'Error al subir la imagen. Intenta de nuevo.';
          ScaffoldMessenger.of(context).showSnackBar(
-           SnackBar(
-             content: Text(message),
+           const SnackBar(
+             content: Text(
+                 'No pudimos subir tu foto. Intenta de nuevo en un momento.'),
              backgroundColor: Colors.red,
            ),
          );

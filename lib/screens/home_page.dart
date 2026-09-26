@@ -399,7 +399,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     // Extraer nivel
     String level = 'A1';
     final combined = '${course['fullname'] ?? ''} ${course['shortname'] ?? ''}';
-    if (combined.contains('A2')) {
+    if (combined.toUpperCase().contains('KIDS')) {
+      level = 'KIDS';
+    } else if (combined.contains('A2')) {
       level = 'A2';
     } else if (combined.contains('B1')) {
       level = 'B1';
@@ -440,6 +442,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       accentColor = LimpioTokens.warning;
     } else if (level == 'B2') {
       accentColor = LimpioTokens.purple;
+    } else if (level == 'KIDS') {
+      accentColor = const Color(0xFFE84393);
     }
 
     return GestureDetector(
@@ -469,7 +473,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           child: Stack(
             children: [
               Image.asset(
-                'assets/$level.webp',
+                level == 'KIDS' ? 'assets/Kids.webp' : 'assets/$level.webp',
                 height: 200,
                 width: double.infinity,
                 fit: BoxFit.cover,

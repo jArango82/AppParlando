@@ -68,7 +68,7 @@ class ScheduleReminderService {
           return (
             success: false,
             message:
-                'No se pudo activar las notificaciones. Revisa el permiso del sistema.',
+                'Para recibir avisos, permite las notificaciones de Parlando en los ajustes de tu teléfono.',
             settings: null,
           );
         }
@@ -104,8 +104,8 @@ class ScheduleReminderService {
       return (
         success: true,
         message: settings.enabled
-            ? 'Recordatorios activados. Te avisaremos si hay cupo.'
-            : 'Recordatorios desactivados. No recibirás push.',
+            ? 'Listo. Te avisaremos cuando haya cupo.'
+            : 'Avisos de cupos desactivados.',
         settings: settings,
       );
     } catch (e) {
@@ -113,7 +113,7 @@ class ScheduleReminderService {
       return (
         success: false,
         message:
-            'No se pudieron guardar los recordatorios. ¿Existe la tabla en InsForge?',
+            'No pudimos guardar tus avisos. Intenta de nuevo en un momento.',
         settings: null,
       );
     }

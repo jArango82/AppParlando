@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'main_page.dart';
+import 'screens/professor/professor_attendance_screen.dart';
 import 'services/auth_service.dart';
+import 'services/professor_auth.dart';
 import 'widgets/custom_loading_indicator.dart';
 import 'widgets/limpio_card.dart';
 import 'theme_provider.dart';
@@ -94,6 +96,23 @@ class _HomeScreenState extends State<HomeScreen>
 
     setState(() => _isLoading = true);
 
+    // 1) Login profesor (misma lógica que Colaboradores.html) — no afecta Moodle.
+    final professorName = ProfessorAuth.tryLogin(user, pass);
+    if (professorName != null) {
+      await ProfessorAuth.saveSession(
+        displayName: professorName,
+        username: user,
+      );
+      setState(() => _isLoading = false);
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+            builder: (context) => const ProfessorAttendanceScreen()),
+      );
+      return;
+    }
+
+    // 2) Login estudiante vía Moodle (flujo existente).
     final res = await AuthService().login(user, pass);
 
     setState(() => _isLoading = false);

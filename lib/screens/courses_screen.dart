@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/course_lock_service.dart';
 import '../services/course_service.dart';
 import 'course_details_screen.dart';
 import '../widgets/custom_loading_indicator.dart';
@@ -14,6 +15,7 @@ class CoursesScreen extends StatefulWidget {
 class _CoursesScreenState extends State<CoursesScreen> {
   Future<List<dynamic>>? _coursesFuture;
   final Map<int, Future<Map<String, dynamic>>> _courseProgressFutures = {};
+  Map<int, CourseLockInfo> _locks = {};
 
   @override
   void initState() {
@@ -24,13 +26,16 @@ class _CoursesScreenState extends State<CoursesScreen> {
   void _loadCourses() {
     setState(() {
       _courseProgressFutures.clear();
-      _coursesFuture = CourseService().getCourses().then((courses) {
-        for (var c in courses) {
-          if (c['id'] != 9 && c['id'] != 10) {
-            _courseProgressFutures[c['id']] =
-                CourseService().getCourseDetails(c['id']);
-          }
+      _locks = {};
+      _coursesFuture = CourseService().getCourses().then((courses) async {
+        final visible =
+            courses.where((c) => c['id'] != 9 && c['id'] != 10).toList();
+        for (var c in visible) {
+          _courseProgressFutures[c['id']] =
+              CourseService().getCourseDetails(c['id']);
         }
+        final locks = await CourseLockService.computeLocks(visible);
+        if (mounted) setState(() => _locks = locks);
         return courses;
       });
     });
@@ -77,7 +82,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 32),
                     child: Text(
-                      'Error cargando cursos:\n${snapshot.error}',
+                      'No pudimos cargar tus cursos. Revisa tu conexión e intenta de nuevo.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Colors.grey[600]),
                     ),
@@ -109,7 +114,16 @@ class _CoursesScreenState extends State<CoursesScreen> {
 
           final courses = snapshot.data!
               .where((c) => c['id'] != 9 && c['id'] != 10)
-              .toList();
+              .toList()
+            ..sort((a, b) {
+              int rank(dynamic c) {
+                final i = CourseLockService.levelOrder
+                    .indexOf(CourseLockService.levelOf(c) ?? '');
+                return i < 0 ? 99 : i;
+              }
+
+              return rank(a).compareTo(rank(b));
+            });
 
           final bool isWide = context.isWideScreen;
 
@@ -152,12 +166,15 @@ class _CoursesScreenState extends State<CoursesScreen> {
     final String fullname = course['fullname'] ?? 'Curso Desconocido';
     final String rawShortname = course['shortname'] ?? '';
     final int courseId = course['id'];
+    final lock = _locks[courseId] ?? CourseLockInfo.unlocked;
 
     // Extraemos el nivel real del nombre completo (ej. "Curso Ingles A1" → "A1")
     // Esto se usa para asignar la imagen y el color temático
     String displayLevel = rawShortname;
     final combined = '$fullname $rawShortname';
-    if (combined.contains('A1')) {
+    if (combined.toUpperCase().contains('KIDS')) {
+      displayLevel = 'KIDS';
+    } else if (combined.contains('A1')) {
       displayLevel = 'A1';
     } else if (combined.contains('A2')) {
       displayLevel = 'A2';
@@ -177,6 +194,8 @@ class _CoursesScreenState extends State<CoursesScreen> {
       accentColor = const Color(0xFFE67E22);
     } else if (displayLevel == 'B2') {
       accentColor = const Color(0xFF8E44AD);
+    } else if (displayLevel == 'KIDS') {
+      accentColor = const Color(0xFFE84393);
     }
 
     return Container(
@@ -203,7 +222,9 @@ class _CoursesScreenState extends State<CoursesScreen> {
               children: [
                 // Imagen de fondo (correspondiente al nivel)
                 Image.asset(
-                  'assets/$displayLevel.webp',
+                  displayLevel == 'KIDS'
+                      ? 'assets/Kids.webp'
+                      : 'assets/$displayLevel.webp',
                   height: 120,
                   width: double.infinity,
                   fit: BoxFit.cover,
@@ -259,6 +280,20 @@ class _CoursesScreenState extends State<CoursesScreen> {
                     ),
                   ),
                 ),
+                if (lock.locked)
+                  Positioned(
+                    right: 16,
+                    top: 16,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.55),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.lock_rounded,
+                          color: Colors.white, size: 18),
+                    ),
+                  ),
                 Positioned(
                   left: 16,
                   right: 16,
@@ -377,10 +412,44 @@ class _CoursesScreenState extends State<CoursesScreen> {
                     },
                   ),
                 ],
+                if (lock.locked) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: context.isDarkMode
+                          ? Colors.white.withValues(alpha: 0.05)
+                          : const Color(0xFFF3F5F9),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.lock_outline_rounded,
+                            size: 18, color: context.subtitleColor),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Se desbloquea cuando certifiques el nivel '
+                            '${lock.requiredLevel}.',
+                            style: TextStyle(
+                              fontSize: 13,
+                              height: 1.35,
+                              fontWeight: FontWeight.w600,
+                              color: context.subtitleColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
+                    onPressed: lock.locked
+                        ? null
+                        : () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -398,9 +467,9 @@ class _CoursesScreenState extends State<CoursesScreen> {
                       ),
                       elevation: 0,
                     ),
-                    child: const Text(
-                      'Continuar Aprendiendo',
-                      style: TextStyle(
+                    child: Text(
+                      lock.locked ? 'Bloqueado' : 'Continuar aprendiendo',
+                      style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                       ),

@@ -4,6 +4,8 @@ import 'package:video_player/video_player.dart';
 import 'home_screen.dart'; // Esteban bb aquí es a donde iremos nosotros después del video
 import 'package:app_parlando/services/auth_service.dart';
 import 'package:app_parlando/services/app_update_service.dart';
+import 'package:app_parlando/services/professor_auth.dart';
+import 'package:app_parlando/screens/professor/professor_attendance_screen.dart';
 import 'main_page.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -70,11 +72,21 @@ class _SplashScreenState extends State<SplashScreen> {
     await AppUpdateService.checkAndUpdate();
 
     // Check if user is logged in
-    final isLoggedIn = await AuthService().isLoggedIn();
+    final isProfessor = await ProfessorAuth.isLoggedIn();
+    final isStudent = !isProfessor && await AuthService().isLoggedIn();
 
     if (!mounted) return;
 
-    if (isLoggedIn) {
+    if (isProfessor) {
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const ProfessorAttendanceScreen(),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+        ),
+      );
+    } else if (isStudent) {
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           pageBuilder: (context, animation, secondaryAnimation) => const MainPage(),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/course_service.dart';
 import '../services/badge_service.dart';
+import '../services/course_lock_service.dart';
 import '../config/course_config.dart';
 import '../utils/module_filters.dart';
 import '../widgets/custom_loading_indicator.dart';
@@ -25,7 +26,20 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
   String _errorMessage = '';
   int _selectedCategoryIndex = 0;
 
+  /// Bloqueo por certificación, por nivel (solo niveles matriculados).
+  Map<String, CourseLockInfo> _levelLocks = {};
+
   static final List<_DiagnosticCategory> _categories = [
+    _DiagnosticCategory(
+      title: 'KIDS',
+      subtitle: 'Introduction KIDS',
+      levelKey: 'KIDS',
+      icon: Icons.child_care_rounded,
+      gradientColors: const [Color(0xFFE84393), Color(0xFFFD79A8)],
+      courseId: DiagnosticConfig.levels['KIDS']!.courseId,
+      sectionIds: DiagnosticConfig.levels['KIDS']!.sectionIds,
+      partGroups: DiagnosticConfig.levels['KIDS']!.parts,
+    ),
     _DiagnosticCategory(
       title: 'Nivel A1',
       subtitle: 'Principiante',
@@ -64,6 +78,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
     ),
   ];
 
+  bool _isLocked(String levelKey) => _levelLocks[levelKey]?.locked == true;
+
   List<dynamic> get _sections =>
       _sectionsByLevel[_categories[_selectedCategoryIndex].levelKey] ??
       const [];
@@ -82,17 +98,34 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
 
     try {
       final courseService = CourseService();
-      final results = await Future.wait(
+      final locksFuture = _loadLevelLocks(courseService);
+      final List<Map<String, dynamic>?> results = await Future.wait(
         _categories.map(
-          (c) => courseService.getCourseDetails(c.courseId),
+          (c) => courseService
+              .getCourseDetails(c.courseId)
+              .then<Map<String, dynamic>?>((d) => d)
+              .catchError((_) => null),
         ),
       );
+      if (results.every((r) => r == null)) {
+        throw Exception('No se pudieron cargar los diagnósticos');
+      }
+      final levelLocks = await locksFuture;
 
       if (mounted) {
         setState(() {
           for (var i = 0; i < _categories.length; i++) {
             _sectionsByLevel[_categories[i].levelKey] =
-                results[i]['sections'] as List<dynamic>? ?? [];
+                results[i]?['sections'] as List<dynamic>? ?? [];
+          }
+          _levelLocks = levelLocks;
+          final current = _categories[_selectedCategoryIndex].levelKey;
+          if (_isLocked(current) ||
+              (_sectionsByLevel[current]?.isEmpty ?? true)) {
+            final firstOpen = _categories.indexWhere((c) =>
+                !_isLocked(c.levelKey) &&
+                (_sectionsByLevel[c.levelKey]?.isNotEmpty ?? false));
+            if (firstOpen >= 0) _selectedCategoryIndex = firstOpen;
           }
           _isLoading = false;
         });
@@ -105,6 +138,26 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
           _errorMessage = e.toString();
         });
       }
+    }
+  }
+
+  Future<Map<String, CourseLockInfo>> _loadLevelLocks(
+    CourseService courseService,
+  ) async {
+    try {
+      final courses = (await courseService.getCourses())
+          .where((c) => c['id'] != 9 && c['id'] != 10)
+          .toList();
+      final byCourse = await CourseLockService.computeLocks(courses);
+      return {
+        for (final c in courses)
+          if (CourseLockService.levelOf(c) != null)
+            CourseLockService.levelOf(c)!:
+                byCourse[c['id']] ?? CourseLockInfo.unlocked,
+      };
+    } catch (e) {
+      debugPrint('DiagnosticsScreen: no se pudo calcular bloqueos: $e');
+      return {};
     }
   }
 
@@ -227,7 +280,12 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (selected) ...[
+                      if (_isLocked(category.levelKey)) ...[
+                        Icon(Icons.lock_rounded,
+                            size: 14,
+                            color: selected ? color : context.subtitleColor),
+                        const SizedBox(width: 6),
+                      ] else if (selected) ...[
                         Icon(category.icon, size: 16, color: color),
                         const SizedBox(width: 6),
                       ],
@@ -306,16 +364,76 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
     );
   }
 
+  Widget _buildLockedState(_DiagnosticCategory category) {
+    final color = category.gradientColors[0];
+    final required = _levelLocks[category.levelKey]?.requiredLevel;
+    return RefreshIndicator(
+      onRefresh: _loadDiagnostics,
+      color: color,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 40, 20, 28),
+        children: [
+          Center(
+            child: Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.lock_rounded, size: 34, color: color),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Diagnósticos de ${category.levelKey} bloqueados',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: context.textColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            required != null
+                ? 'Se desbloquean cuando certifiques el nivel $required.'
+                : 'Se desbloquean cuando certifiques el nivel anterior.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.4,
+              color: context.subtitleColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDashboard() {
     final category = _categories[_selectedCategoryIndex];
     final color = category.gradientColors[0];
+    if (_isLocked(category.levelKey)) return _buildLockedState(category);
 
+    // Cada parte puede abarcar varias secciones; se muestran como una sola.
     final List<Map<String, dynamic>> categoryRealSections = [];
-    for (var id in category.sectionIds) {
-      final section = _getSectionByNumber(id);
-      if (section != null) {
-        categoryRealSections.add(section);
+    for (final group in category.parts) {
+      final found = [
+        for (final id in group) _getSectionByNumber(id),
+      ].whereType<Map<String, dynamic>>().toList();
+      if (found.isEmpty) continue;
+      if (found.length == 1) {
+        categoryRealSections.add(found.first);
+        continue;
       }
+      categoryRealSections.add({
+        ...found.first,
+        'modules': [
+          for (final s in found) ...(s['modules'] as List<dynamic>? ?? []),
+        ],
+      });
     }
 
     int totalModules = 0;
@@ -917,6 +1035,7 @@ class _DiagnosticCategory {
   final List<Color> gradientColors;
   final int courseId;
   final List<int> sectionIds;
+  final List<List<int>>? partGroups;
 
   const _DiagnosticCategory({
     required this.title,
@@ -926,5 +1045,9 @@ class _DiagnosticCategory {
     required this.gradientColors,
     required this.courseId,
     required this.sectionIds,
+    this.partGroups,
   });
+
+  List<List<int>> get parts =>
+      partGroups ?? [for (final id in sectionIds) [id]];
 }

@@ -31,6 +31,7 @@ class _GradesScreenState extends State<GradesScreen> {
     'A2': [LimpioTokens.success, Color(0xFF56E89C)],
     'B1': [LimpioTokens.warning, Color(0xFFF7C948)],
     'B2': [LimpioTokens.purple, Color(0xFFC66DD8)],
+    'KIDS': [Color(0xFFE84393), Color(0xFFFD79A8)],
   };
 
   @override
@@ -83,11 +84,12 @@ class _GradesScreenState extends State<GradesScreen> {
 
   int _getCoursePriority(String name) {
     final n = name.toUpperCase();
-    if (n.contains('A1')) return 0;
-    if (n.contains('A2')) return 1;
-    if (n.contains('B1')) return 2;
-    if (n.contains('B2')) return 3;
-    return 4;
+    if (n.contains('KIDS')) return 0;
+    if (n.contains('A1')) return 1;
+    if (n.contains('A2')) return 2;
+    if (n.contains('B1')) return 3;
+    if (n.contains('B2')) return 4;
+    return 5;
   }
 
   Future<void> _loadCourseDetails(int courseId) async {
@@ -115,6 +117,7 @@ class _GradesScreenState extends State<GradesScreen> {
 
   String _detectLevel(String name) {
     final n = name.toUpperCase();
+    if (n.contains('KIDS')) return 'KIDS';
     if (n.contains('A1')) return 'A1';
     if (n.contains('A2')) return 'A2';
     if (n.contains('B1')) return 'B1';

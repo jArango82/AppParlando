@@ -38,8 +38,21 @@ class CourseConfig {
       'B2 Parte 6': {'ids': List.generate(28, (i) => i + 132), 'totalExercises': 136}
   };
 
+  // Configuración de partes para Introduction KIDS (id 14)
+  static final Map<String, dynamic> kidsParts = {
+      'KIDS Parte 1': {'ids': List.generate(24, (i) => i)}, // 0-23
+      'KIDS Parte 2': {'ids': List.generate(8, (i) => i + 26)}, // 26-33
+      'KIDS Parte 3': {'ids': List.generate(22, (i) => i + 36)}, // 36-57
+      'KIDS Parte 4': {'ids': List.generate(20, (i) => i + 60)}, // 60-79
+      'KIDS Parte 5': {'ids': List.generate(23, (i) => i + 82)} // 82-104
+  };
+
+  static bool isKids(String shortname, {String fullname = ''}) =>
+      '$shortname $fullname'.toUpperCase().contains('KIDS');
+
   static Map<String, dynamic> getPartsForCourse(String shortname, {String fullname = ''}) {
     final combined = '$shortname $fullname';
+    if (isKids(shortname, fullname: fullname)) return kidsParts;
     if (combined.contains('A1')) return a1Parts;
     if (combined.contains('A2')) return a2Parts;
     if (combined.contains('B1')) return b1Parts;
@@ -67,6 +80,17 @@ class DiagnosticConfig {
       courseId: 13,
       sectionIds: [27, 55, 83, 109, 135, 165],
     ),
+    // En KIDS cada diagnóstico ocupa dos secciones.
+    'KIDS': DiagnosticLevelConfig(
+      courseId: 14,
+      sectionIds: [24, 25, 34, 35, 58, 59, 80, 81],
+      partGroups: [
+        [24, 25],
+        [34, 35],
+        [58, 59],
+        [80, 81],
+      ],
+    ),
   };
 
   static DiagnosticLevelConfig? forLevel(String level) => levels[level];
@@ -80,9 +104,15 @@ class DiagnosticConfig {
 class DiagnosticLevelConfig {
   final int courseId;
   final List<int> sectionIds;
+  final List<List<int>>? partGroups;
 
   const DiagnosticLevelConfig({
     required this.courseId,
     required this.sectionIds,
+    this.partGroups,
   });
+
+  /// Secciones de cada parte de diagnóstico (una por parte si no hay grupos).
+  List<List<int>> get parts =>
+      partGroups ?? [for (final id in sectionIds) [id]];
 }

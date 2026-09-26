@@ -325,13 +325,14 @@ class _ExerciseWebViewScreenState extends State<ExerciseWebViewScreen> {
                         size: 48, color: Colors.red),
                     const SizedBox(height: 16),
                     const Text(
-                      'Could not load exercise',
+                      'No pudimos abrir el ejercicio',
                       style:
                           TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Please try logging out and back in.',
+                      'Si el problema continúa, cierra sesión y vuelve a entrar.',
+                      textAlign: TextAlign.center,
                       style: TextStyle(color: Colors.grey[600], fontSize: 14),
                     ),
                     const SizedBox(height: 24),
@@ -343,7 +344,7 @@ class _ExerciseWebViewScreenState extends State<ExerciseWebViewScreen> {
                         });
                         _setupAndLoad();
                       },
-                      child: const Text('Retry'),
+                      child: const Text('Reintentar'),
                     ),
                   ],
                 ),

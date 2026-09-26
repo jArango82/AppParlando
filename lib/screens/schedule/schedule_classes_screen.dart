@@ -7,6 +7,7 @@ import '../../services/schedule_service.dart';
 import '../../theme_provider.dart';
 import '../../widgets/custom_loading_indicator.dart';
 import '../../widgets/limpio_card.dart';
+import 'schedule_my_classes_sheet.dart';
 import 'schedule_reminders_sheet.dart';
 
 /// Pantalla de auto-agendamiento de clases semanales.
@@ -24,6 +25,8 @@ class _ScheduleClassesScreenState extends State<ScheduleClassesScreen>
   static const _brand = Color(0xFF2A60E4);
   static const _success = Color(0xFF1FAB5E);
   static const _danger = Color(0xFFE74C3C);
+  static const _warning = Color(0xFFE67E22);
+  static const _purple = Color(0xFF8E44AD);
 
   final _scheduleService = ScheduleService();
   final _reminderService = ScheduleReminderService();
@@ -114,6 +117,20 @@ class _ScheduleClassesScreenState extends State<ScheduleClassesScreen>
     }
   }
 
+  Future<void> _openMyClasses() async {
+    HapticFeedback.selectionClick();
+    final selection = await ScheduleMyClassesSheet.show(
+      context,
+      studentId: widget.studentId,
+    );
+    if (!mounted || selection == null) return;
+    setState(() {
+      _weekOffset = selection.weekOffset;
+      _activeDay = selection.dayKey;
+    });
+    _loadWeek(forceRefresh: true);
+  }
+
   Future<void> _onAction({
     required bool book,
     required String dayKey,
@@ -202,7 +219,12 @@ class _ScheduleClassesScreenState extends State<ScheduleClassesScreen>
         centerTitle: false,
         actions: [
           IconButton(
-            tooltip: 'Recordatorios de cupos',
+            tooltip: 'Mis clases agendadas',
+            onPressed: _openMyClasses,
+            icon: const Icon(Icons.event_note_rounded),
+          ),
+          IconButton(
+            tooltip: 'Avisos de cupos',
             onPressed: _openReminders,
             icon: Icon(
               _remindersActive
@@ -235,6 +257,10 @@ class _ScheduleClassesScreenState extends State<ScheduleClassesScreen>
                 _buildSummary(context),
                 const SizedBox(height: 16),
                 _buildWeekBar(context, week),
+                if (!_loading && _view?.weekBeyondContract == true) ...[
+                  const SizedBox(height: 16),
+                  _buildContractBanner(context),
+                ],
                 const SizedBox(height: 16),
                 _buildDayTabs(context),
                 const SizedBox(height: 16),
@@ -346,6 +372,27 @@ class _ScheduleClassesScreenState extends State<ScheduleClassesScreen>
             ),
           ],
           const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _openMyClasses,
+              icon: const Icon(Icons.event_note_rounded, size: 18),
+              label: Text(
+                v != null && v.bookedCount > 0
+                    ? 'Ver mis clases agendadas (${v.bookedCount})'
+                    : 'Ver mis clases agendadas',
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _brand,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                side: BorderSide(color: _brand.withValues(alpha: 0.3)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
           Material(
             color: _remindersActive
                 ? _brand.withValues(alpha: 0.08)
@@ -384,8 +431,8 @@ class _ScheduleClassesScreenState extends State<ScheduleClassesScreen>
                           const SizedBox(height: 2),
                           Text(
                             _remindersActive
-                                ? 'Recordatorios activos'
-                                : 'Configura días y horarios',
+                                ? 'Avisos activados'
+                                : 'Elige días y horarios',
                             style: TextStyle(
                               fontSize: 12,
                               color: context.subtitleColor,
@@ -533,6 +580,52 @@ class _ScheduleClassesScreenState extends State<ScheduleClassesScreen>
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContractBanner(BuildContext context) {
+    final end = formatScheduleDate(_view?.endDate);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _warning.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _warning.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.event_busy_rounded, color: _warning, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  end != null
+                      ? 'Tu contrato terminó el $end'
+                      : 'Tu contrato no cubre esta semana',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13.5,
+                    color: context.textColor,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'No puedes agendar clases después de esa fecha. '
+                  'Comunícate con Parlando para renovar.',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    height: 1.35,
+                    color: context.subtitleColor,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -743,8 +836,6 @@ class _ScheduleClassesScreenState extends State<ScheduleClassesScreen>
             ],
           ),
           const SizedBox(height: 8),
-          _metaRow(Icons.person_outline_rounded, room.teacher),
-          const SizedBox(height: 4),
           _metaRow(Icons.chat_bubble_outline_rounded, room.classTypeText),
           const SizedBox(height: 4),
           _metaRow(Icons.layers_outlined, room.levelsText),
@@ -862,22 +953,37 @@ class _ScheduleClassesScreenState extends State<ScheduleClassesScreen>
       );
     }
 
-    return Row(
-      children: [
-        Icon(Icons.info_outline_rounded,
-            size: 16, color: context.subtitleColor),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            room.blockMessage,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: context.subtitleColor,
+    final (IconData icon, Color color) = switch (room.effectiveBlockReason) {
+      'room_full' => (Icons.group_off_rounded, _danger),
+      'course_ended' => (Icons.event_busy_rounded, _warning),
+      'personalized_room_only' => (Icons.person_pin_rounded, _purple),
+      'limit_reached' => (Icons.check_circle_outline_rounded, _brand),
+      _ => (Icons.info_outline_rounded, context.subtitleColor),
+    };
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              room.blockMessageFor(_view),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

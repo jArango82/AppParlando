@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_parlando/services/auth_service.dart';
+import 'package:app_parlando/services/course_lock_service.dart';
 
 class CourseService {
   static const String _moodleBaseUrl = 'https://campus.parlandolingue.com';
@@ -110,20 +111,27 @@ class CourseService {
       
       // Select the most relevant course (highest ID usually means latest)
       courses.sort((a, b) => (b['id'] as int).compareTo(a['id'] as int));
-      final course = courses.first; 
+
+      // Nivel más alto que el estudiante ya tiene desbloqueado.
+      final visible =
+          courses.where((c) => c['id'] != 9 && c['id'] != 10).toList();
+      final locks = await CourseLockService.computeLocks(visible);
+      final unlocked = visible
+          .where((c) => locks[c['id']]?.locked != true)
+          .toList()
+        ..sort((a, b) => CourseLockService.levelOrder
+            .indexOf(CourseLockService.levelOf(b) ?? '')
+            .compareTo(CourseLockService.levelOrder
+                .indexOf(CourseLockService.levelOf(a) ?? '')));
+      final course = unlocked.isNotEmpty ? unlocked.first : courses.first;
       final int courseId = course['id'];
 
-      // 4. Get Course Contents & Grades in Parallel
       final results = await Future.wait([
         _getCourseContents(token, courseId),
         _getGrades(token, courseId, userId),
       ]);
-
       final sections = results[0];
-      final grades = results[1];
-
-      // 6. Merge Data
-      _mergeGradesIntoSections(sections, grades);
+      _mergeGradesIntoSections(sections, results[1]);
 
       return {
         'course': {

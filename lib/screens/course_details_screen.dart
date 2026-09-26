@@ -127,7 +127,9 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
   void _resolveAccentColor() {
     final combined =
         '${widget.course['fullname'] ?? ''} ${widget.course['shortname'] ?? ''}';
-    if (combined.contains('A1')) {
+    if (combined.toUpperCase().contains('KIDS')) {
+      _accentColor = const Color(0xFFE84393);
+    } else if (combined.contains('A1')) {
       _accentColor = const Color(0xFF2A60E4);
     } else if (combined.contains('A2')) {
       _accentColor = const Color(0xFF1FAB5E);
@@ -193,7 +195,8 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                   children: [
                     Icon(Icons.error_outline, size: 60, color: Colors.red[300]),
                     const SizedBox(height: 16),
-                    Text('Error cargando detalles: ${snapshot.error}',
+                    Text(
+                        'No pudimos cargar este curso. Revisa tu conexión e intenta de nuevo.',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: context.subtitleColor)),
                   ],

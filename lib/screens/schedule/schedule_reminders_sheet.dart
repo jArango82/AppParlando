@@ -6,7 +6,7 @@ import '../../models/schedule_reminder_models.dart';
 import '../../services/schedule_reminder_service.dart';
 import '../../theme_provider.dart';
 
-/// Bottom sheet para configurar recordatorios push de cupos.
+/// Bottom sheet para configurar avisos de cupos.
 class ScheduleRemindersSheet extends StatefulWidget {
   final String studentId;
 
@@ -122,7 +122,7 @@ class _ScheduleRemindersSheetState extends State<ScheduleRemindersSheet> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Recordatorios de cupos',
+                      'Avisos de cupos',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
@@ -147,8 +147,8 @@ class _ScheduleRemindersSheetState extends State<ScheduleRemindersSheet> {
                         const SizedBox(height: 12),
                         Text(
                           _enabled
-                              ? 'Elige los días y horarios. Te avisaremos si aparece un salón donde puedas matricularte.'
-                              : 'Sin recordatorios no se activan las notificaciones push.',
+                              ? 'Elige los días y horarios que te interesan. Te enviaremos una notificación cuando se libere un cupo.'
+                              : 'Activa los avisos para enterarte cuando se libere un cupo en el horario que quieres.',
                           style: TextStyle(
                             fontSize: 13,
                             height: 1.35,
@@ -187,9 +187,9 @@ class _ScheduleRemindersSheetState extends State<ScheduleRemindersSheet> {
                             ),
                           )
                         : Text(
-                            _enabled
-                                ? 'Guardar y activar push ($_selectedCount)'
-                                : 'Guardar (push DESACTIVADO)',
+                            _enabled && _selectedCount > 0
+                                ? 'Guardar ($_selectedCount ${_selectedCount == 1 ? 'horario' : 'horarios'})'
+                                : 'Guardar',
                             style: const TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 15,
@@ -219,7 +219,7 @@ class _ScheduleRemindersSheetState extends State<ScheduleRemindersSheet> {
         activeThumbColor: Colors.white,
         activeTrackColor: _brand,
         title: Text(
-          'Activar recordatorios',
+          'Avisarme cuando haya cupo',
           style: TextStyle(
             fontWeight: FontWeight.w700,
             color: context.textColor,
@@ -227,8 +227,8 @@ class _ScheduleRemindersSheetState extends State<ScheduleRemindersSheet> {
         ),
         subtitle: Text(
           _enabled
-              ? 'Push activo solo para los horarios marcados'
-              : 'Off = sin notificaciones push',
+              ? 'Solo te avisaremos en los horarios que marques'
+              : 'No recibirás avisos de cupos',
           style: TextStyle(fontSize: 12, color: context.subtitleColor),
         ),
         onChanged: (v) {
