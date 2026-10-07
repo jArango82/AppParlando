@@ -7,6 +7,7 @@ import '../services/course_service.dart';
 import '../services/auth_service.dart';
 import '../services/student_service.dart';
 import '../services/student_messages_service.dart';
+import '../services/schedule_reminder_service.dart';
 import '../models/practice_exercise.dart';
 import 'course_details_screen.dart';
 import 'practice/practice_level_select_screen.dart';
@@ -38,6 +39,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   bool _appInForeground = true;
   Timer? _pollTimer;
   bool _pollInFlight = false;
+  bool _reminderTokenSynced = false;
 
   @override
   void initState() {
@@ -192,6 +194,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         });
       }
       _syncPolling();
+
+      // Una vez por sesión: re-registrar el token push si tiene avisos de cupos activos
+      if (!_reminderTokenSynced) {
+        _reminderTokenSynced = true;
+        unawaited(ScheduleReminderService().resyncDeviceToken(studentId));
+      }
     } catch (e) {
       debugPrint('HomePage._loadMessages: $e');
       if (mounted) {
@@ -740,7 +748,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       color: Colors.transparent,
       child: InkWell(
         onTap: _studentId == null
-            ? null
+            ? (_messagesLoading
+                ? null
+                : () => _loadMessages(forceRefresh: true))
             : () {
                 Navigator.of(context).push(
                   PageRouteBuilder(
@@ -816,9 +826,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _studentId == null
-                          ? 'Perfil de estudiante no disponible'
-                          : 'Reserva tu horario semanal en salones disponibles',
+                      _studentId != null
+                          ? 'Reserva tu horario semanal en salones disponibles'
+                          : _messagesLoading
+                              ? 'Cargando tu perfil…'
+                              : 'No se pudo cargar tu perfil. Toca para reintentar',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
@@ -830,7 +842,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 ),
               ),
               Icon(
-                Icons.arrow_forward_ios_rounded,
+                _studentId == null && !_messagesLoading
+                    ? Icons.refresh_rounded
+                    : Icons.arrow_forward_ios_rounded,
                 size: 16,
                 color: _studentId == null
                     ? context.subtitleColor.withValues(alpha: 0.4)

@@ -19,6 +19,7 @@ class _ExerciseWebViewScreenState extends State<ExerciseWebViewScreen> {
   bool _isLoading = true;
   bool _hasError = false;
   bool _loginSubmitted = false;
+  bool _redirectedToExercise = false;
 
   // Custom CSS to hide Moodle chrome and style the exercise
   static const String _customCss = '''
@@ -134,6 +135,9 @@ class _ExerciseWebViewScreenState extends State<ExerciseWebViewScreen> {
   }
 
   Future<void> _setupAndLoad() async {
+    // "Reintentar" vuelve a pasar por aquí: el flujo de login empieza de cero
+    _loginSubmitted = false;
+    _redirectedToExercise = false;
     try {
       // 1. Obtener credenciales del usuario
       final credentials = await AuthService().getCredentials();
@@ -214,8 +218,12 @@ class _ExerciseWebViewScreenState extends State<ExerciseWebViewScreen> {
                 return;
               }
 
-              // Login exitoso: si no estamos en la URL del ejercicio, redirigir
-              if (!url.contains(Uri.parse(exerciseUrl).path)) {
+              // Login exitoso: si no estamos en la URL del ejercicio, redirigir.
+              // Solo una vez: después el estudiante navega dentro del ejercicio
+              // (p. ej. un quiz pasa de view.php a attempt.php) y no hay que devolverlo.
+              if (!_redirectedToExercise &&
+                  !url.contains(Uri.parse(exerciseUrl).path)) {
+                _redirectedToExercise = true;
                 debugPrint(
                     'Debug: Login exitoso, redirigiendo al ejercicio...');
                 _controller?.loadRequest(Uri.parse(exerciseUrl));
@@ -238,6 +246,19 @@ class _ExerciseWebViewScreenState extends State<ExerciseWebViewScreen> {
             },
             onWebResourceError: (error) {
               debugPrint('Debug: WebView error: ${error.description}');
+              // Si falla la página principal (sin red, servidor caído) el spinner
+              // giraría para siempre; los errores de recursos secundarios se ignoran.
+              // iOS reporta -999 (cancelada) y 102 (carga interrumpida) cuando una
+              // navegación reemplaza a otra, p. ej. al enviar el login: no son fallos.
+              const ignoredCodes = {-999, 102};
+              if (error.isForMainFrame == true &&
+                  !ignoredCodes.contains(error.errorCode) &&
+                  mounted) {
+                setState(() {
+                  _hasError = true;
+                  _isLoading = false;
+                });
+              }
             },
           ),
         );

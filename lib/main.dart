@@ -8,22 +8,33 @@ import 'theme_provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Cada paso se protege por separado: si uno falla la app debe arrancar igual,
+  // en vez de quedarse congelada en el splash nativo sin llegar a runApp.
+
   // Cargar variables de entorno ocultas
-  await dotenv.load(fileName: "env.txt");
+  await _initStep('dotenv', () => dotenv.load(fileName: "env.txt"));
 
   // Inicializar el servicio de notificaciones locales
-  await NotificationService().initialize();
+  await _initStep('notificaciones', () => NotificationService().initialize());
 
-  // Firebase / FCM (fase 1: solo Android)
-  await PushNotificationService().initialize();
+  // Firebase / FCM (Android e iOS)
+  await _initStep('push', () => PushNotificationService().initialize());
 
   // Inicializar el tema (lee preferencia de SharedPreferences)
-  await ThemeProvider.init();
+  await _initStep('tema', ThemeProvider.init);
 
   // InsForge se inicializa automáticamente como singleton lazy
   // al leer las variables de entorno INSFORGE_URL e INSFORGE_ANON_KEY.
 
   runApp(const MainApp());
+}
+
+Future<void> _initStep(String name, Future<void> Function() step) async {
+  try {
+    await step();
+  } catch (e, st) {
+    debugPrint('Arranque: falló "$name": $e\n$st');
+  }
 }
 
 class MainApp extends StatelessWidget {

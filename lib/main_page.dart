@@ -36,9 +36,16 @@ class _MainPageState extends State<MainPage> {
     });
   }
 
+  // Cambia cada vez que se entra a Perfil para que recargue sus datos, pero no en
+  // cualquier otro rebuild (p. ej. cambiar el tema desde el propio perfil).
+  int _profileVisits = 0;
+
   void _onItemTapped(int index) {
     if (_selectedIndex == index) return;
-    setState(() => _selectedIndex = index);
+    setState(() {
+      _selectedIndex = index;
+      if (index == 4) _profileVisits++;
+    });
   }
 
   List<Widget> get _pages => [
@@ -46,9 +53,7 @@ class _MainPageState extends State<MainPage> {
         const CoursesScreen(),
         const DiagnosticsScreen(),
         const GradesScreen(),
-        ProfileScreen(
-          key: _selectedIndex == 4 ? ValueKey(DateTime.now()) : null,
-        ),
+        ProfileScreen(key: ValueKey(_profileVisits)),
       ];
 
   Widget _buildRail(BuildContext context) {

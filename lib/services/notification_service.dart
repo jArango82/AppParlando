@@ -153,9 +153,13 @@ class NotificationService {
       }
 
       // 3. Calcular días restantes
+      // Se comparan fechas sin hora: con la hora actual, un contrato que vence
+      // mañana daba 0 días ("vence hoy") y uno a 7 días daba 6.
       final DateTime endDate = DateTime.parse(endDateStr);
       final DateTime now = DateTime.now();
-      final int daysLeft = endDate.difference(now).inDays;
+      final int daysLeft = DateTime.utc(endDate.year, endDate.month, endDate.day)
+          .difference(DateTime.utc(now.year, now.month, now.day))
+          .inDays;
 
       // Construir título y cuerpo del mensaje según los días restantes
       String title;

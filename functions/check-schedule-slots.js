@@ -6,6 +6,8 @@
  * Secrets en InsForge (encrypted):
  *   FIREBASE_SERVICE_ACCOUNT_JSON  → contenido completo del JSON
  *                                    "Generate new private key" de Firebase
+ *   CRON_SECRET                    → el schedule lo envía en el header
+ *                                    x-cron-secret; sin él responde 401
  *
  * Env opcional:
  *   SCHEDULE_API_BASE
@@ -215,6 +217,19 @@ export default async function (req) {
 
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
+  // Solo el cron de InsForge puede ejecutarla: la respuesta incluye student_id
+  // y cada ejecución consulta cupos y puede enviar pushes.
+  const cronSecret = Deno.env.get('CRON_SECRET') ?? '';
+  if (!cronSecret || req.headers.get('x-cron-secret') !== cronSecret) {
+    return new Response(
+      JSON.stringify({ success: false, message: 'Unauthorized' }),
+      {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      },
+    );
   }
 
   try {

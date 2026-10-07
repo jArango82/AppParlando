@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -28,6 +29,7 @@ class PushNotificationService {
 
   bool _initialized = false;
   String? _cachedToken;
+  StreamSubscription<String>? _tokenRefreshSub;
 
   bool get isInitialized => _initialized;
   String? get currentToken => _cachedToken;
@@ -135,18 +137,52 @@ class PushNotificationService {
     }
   }
 
+  /// Token actual sin mostrar el diálogo de permiso; null si el usuario no ha
+  /// autorizado las notificaciones.
+  Future<String?> getTokenIfAuthorized() async {
+    if (!_isSupportedPlatform || !_initialized) return null;
+    try {
+      final messaging = FirebaseMessaging.instance;
+      final settings = await messaging.getNotificationSettings();
+      final status = settings.authorizationStatus;
+      if (status != AuthorizationStatus.authorized &&
+          status != AuthorizationStatus.provisional) {
+        return null;
+      }
+      final token = await messaging.getToken();
+      _cachedToken = token;
+      return token;
+    } catch (e) {
+      debugPrint('PushNotificationService.getTokenIfAuthorized: $e');
+      return null;
+    }
+  }
+
+  /// Una sola suscripción a la vez: cada llamada reemplaza la anterior, para no
+  /// acumular una por cada guardado de recordatorios.
   void listenTokenRefresh(void Function(String token) onRefresh) {
     if (!_isSupportedPlatform) return;
-    FirebaseMessaging.instance.onTokenRefresh.listen((token) {
+    _tokenRefreshSub?.cancel();
+    _tokenRefreshSub =
+        FirebaseMessaging.instance.onTokenRefresh.listen((token) {
       _cachedToken = token;
       onRefresh(token);
     });
   }
 
+  /// Al cerrar sesión: un token nuevo de este dispositivo no debe guardarse en
+  /// la fila del estudiante anterior.
+  void stopTokenRefresh() {
+    _tokenRefreshSub?.cancel();
+    _tokenRefreshSub = null;
+  }
+
   Future<void> clearToken() async {
     if (!_isSupportedPlatform || !_initialized) return;
     try {
-      await FirebaseMessaging.instance.deleteToken();
+      await FirebaseMessaging.instance
+          .deleteToken()
+          .timeout(const Duration(seconds: 10));
       _cachedToken = null;
     } catch (e) {
       debugPrint('PushNotificationService.clearToken: $e');

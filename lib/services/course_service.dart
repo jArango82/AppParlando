@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'net.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_parlando/services/auth_service.dart';
 import 'package:app_parlando/services/course_lock_service.dart';
@@ -11,6 +11,12 @@ class CourseService {
   // Caché en memoria para evitar llamadas repetidas a _getSiteInfo
   static int? _cachedUserId;
   static String? _cachedFullname;
+
+  /// Al cerrar sesión, para que el siguiente usuario no herede el userId anterior.
+  static void clearCache() {
+    _cachedUserId = null;
+    _cachedFullname = null;
+  }
 
   /// Resuelve userId y fullname. Si moodle_id no está en SharedPreferences,
   /// lo obtiene de _getSiteInfo y lo guarda para futuras llamadas.
@@ -251,19 +257,24 @@ class CourseService {
   }
 
   void _mergeGradesIntoSections(List<dynamic> sections, List<dynamic> grades) {
-    final gradeMap = <int, dynamic>{};
+    // iteminstance solo es único dentro de cada tipo de módulo (un quiz y una tarea
+    // pueden tener la misma instance), y los totales de curso/categoría también
+    // traen iteminstance. Por eso la clave es "módulo:instancia" y solo ítems de actividad.
+    final gradeMap = <String, dynamic>{};
     for (var g in grades) {
-      if (g['iteminstance'] != null) {
-        gradeMap[g['iteminstance']] = g;
+      if (g['itemtype'] == 'mod' &&
+          g['itemmodule'] != null &&
+          g['iteminstance'] != null) {
+        gradeMap['${g['itemmodule']}:${g['iteminstance']}'] = g;
       }
     }
 
     for (var section in sections) {
         if (section['modules'] == null) continue;
         for (var module in section['modules']) {
-           final instanceId = module['instance'];
-           if (instanceId != null && gradeMap.containsKey(instanceId)) {
-             final gradeItem = gradeMap[instanceId];
+           final key = '${module['modname']}:${module['instance']}';
+           if (module['instance'] != null && gradeMap.containsKey(key)) {
+             final gradeItem = gradeMap[key];
              if (gradeItem['gradeformatted'] != null && gradeItem['gradeformatted'] != '-') {
                  module['grade'] = gradeItem['gradeformatted'];
                  module['graderaw'] = gradeItem['graderaw'];

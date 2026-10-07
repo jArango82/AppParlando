@@ -1,9 +1,16 @@
 import 'dart:convert';
 import 'dart:io' as io;
-import 'package:http/http.dart' as http;
+import 'net.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+
+import 'course_service.dart';
+import 'push_notification_service.dart';
+import 'schedule_service.dart';
+import 'student_messages_service.dart';
+import 'student_service.dart';
 
 class AuthService {
   // URLs principales del sistema
@@ -101,7 +108,9 @@ class AuthService {
       }));
 
       // 4. Pre-generar cookie de sesión web para uso en WebViews transparentes
-      await _refreshWebSession(username, password);
+      // Con límite: si la web de Moodle no responde, el login no debe quedarse colgado
+      await _refreshWebSession(username, password)
+          .timeout(http.httpTimeout, onTimeout: () => null);
 
       return {
         'success': true,
@@ -124,6 +133,7 @@ class AuthService {
   Future<String?> _refreshWebSession(String username, String password) async {
     final client = io.HttpClient();
     client.autoUncompress = true; // Maneja gzip automáticamente
+    client.connectionTimeout = const Duration(seconds: 15);
 
     try {
       // Paso 1: GET a la página de login para extraer el logintoken (CSRF) y cookies iniciales
@@ -240,6 +250,27 @@ class AuthService {
     await prefs.remove('shown_badges');
     // Limpiar URL de avatar local
     await prefs.remove('profile_image_url');
+
+    // Datos en memoria del usuario anterior: si otro estudiante entra en este
+    // dispositivo no debe ver su perfil, mensajes ni agenda, ni agendar a su nombre.
+    StudentService().clearCache();
+    StudentMessagesService().clearCache();
+    ScheduleService().clearCache();
+    CourseService.clearCache();
+
+    // Sesión de Moodle del WebView de ejercicios: si no, el siguiente usuario
+    // resolvería ejercicios con la cuenta del anterior.
+    try {
+      await WebViewCookieManager().clearCookies();
+    } catch (e) {
+      debugPrint('AuthService.logout: no se pudieron borrar las cookies: $e');
+    }
+
+    // Avisos de cupos: el token FCM de este dispositivo queda guardado en la fila
+    // del estudiante; al borrarlo deja de recibir sus avisos aquí.
+    final push = PushNotificationService();
+    push.stopTokenRefresh();
+    await push.clearToken();
   }
 
   Future<bool> isLoggedIn() async {
@@ -365,6 +396,19 @@ class AuthService {
       'code': code.trim(),
       'password': password,
       'password_confirm': passwordConfirm,
+    });
+  }
+
+  /// Recupera el usuario: documento + correo.
+  /// Si los datos coinciden, el servidor envía el username al correo indicado.
+  Future<Map<String, dynamic>> recoverUsername({
+    required String documentNumber,
+    required String email,
+  }) {
+    return _passwordResetApi({
+      'action': 'recover_username',
+      'document_number': documentNumber.trim(),
+      'email': email.trim(),
     });
   }
 }

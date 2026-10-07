@@ -119,6 +119,25 @@ class ScheduleReminderService {
     }
   }
 
+  /// Al entrar a la app: si el estudiante tiene avisos activos, registra el token
+  /// actual de este dispositivo. Puede haber rotado, o haberse borrado al cerrar
+  /// sesión, y sin esto los avisos fallarían en silencio.
+  Future<void> resyncDeviceToken(String studentId) async {
+    if (studentId.trim().isEmpty) return;
+    final current = await load(studentId);
+    if (!current.enabled) return;
+
+    final token = await _push.getTokenIfAuthorized();
+    if (token == null || token.isEmpty) return;
+
+    _push.listenTokenRefresh((newToken) {
+      _persistTokenOnly(studentId, newToken);
+    });
+    if (token != current.fcmToken) {
+      await _persistTokenOnly(studentId, token);
+    }
+  }
+
   Future<void> _persistTokenOnly(String studentId, String token) async {
     try {
       final current = await load(studentId);

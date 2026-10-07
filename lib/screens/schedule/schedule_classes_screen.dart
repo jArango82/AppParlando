@@ -31,8 +31,14 @@ class _ScheduleClassesScreenState extends State<ScheduleClassesScreen>
   final _scheduleService = ScheduleService();
   final _reminderService = ScheduleReminderService();
 
-  int _weekOffset = 1;
-  String _activeDay = 'lunes';
+  int _weekOffset = 0;
+  // Abre en el día de hoy (el domingo no hay clases: lunes)
+  String _activeDay = DateTime.now().weekday <= scheduleDayKeys.length
+      ? scheduleDayKeys[DateTime.now().weekday - 1]
+      : scheduleDayKeys.first;
+  // Solo se aplica la respuesta de la última petición: si el estudiante cambia de
+  // semana rápido, una respuesta vieja no debe pisar la semana que está viendo.
+  int _loadRequestId = 0;
   StudentScheduleView? _view;
   bool _loading = true;
   String? _error;
@@ -60,6 +66,7 @@ class _ScheduleClassesScreenState extends State<ScheduleClassesScreen>
   ScheduleWeekInfo get _weekInfo => _scheduleService.getWeekInfo(_weekOffset);
 
   Future<void> _loadWeek({bool forceRefresh = false}) async {
+    final requestId = ++_loadRequestId;
     setState(() {
       _loading = true;
       _error = null;
@@ -71,13 +78,13 @@ class _ScheduleClassesScreenState extends State<ScheduleClassesScreen>
         weekKey: _weekInfo.weekKey,
         forceRefresh: forceRefresh,
       );
-      if (!mounted) return;
+      if (!mounted || requestId != _loadRequestId) return;
       setState(() {
         _view = view;
         _loading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || requestId != _loadRequestId) return;
       setState(() {
         _error = 'No se pudo cargar la programación.';
         _loading = false;

@@ -152,6 +152,20 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  Future<void> _showUsernameRecoverySheet() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Theme(
+          data: ThemeProvider.lightTheme,
+          child: const _UsernameRecoverySheet(),
+        );
+      },
+    );
+  }
+
   Widget _buildLoginForm(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -244,20 +258,40 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ),
         const SizedBox(height: 12),
-        Center(
-          child: TextButton(
-            onPressed: _isLoading ? null : _showPasswordRecoverySheet,
-            style: TextButton.styleFrom(
-              foregroundColor: LimpioTokens.brand,
-            ),
-            child: const Text(
-              '¿Olvidaste tu contraseña?',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 8,
+          runSpacing: 0,
+          children: [
+            TextButton(
+              onPressed: _isLoading ? null : _showUsernameRecoverySheet,
+              style: TextButton.styleFrom(
+                foregroundColor: LimpioTokens.brand,
+                visualDensity: VisualDensity.compact,
+              ),
+              child: const Text(
+                '¿Olvidaste tu usuario?',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
               ),
             ),
-          ),
+            TextButton(
+              onPressed: _isLoading ? null : _showPasswordRecoverySheet,
+              style: TextButton.styleFrom(
+                foregroundColor: LimpioTokens.brand,
+                visualDensity: VisualDensity.compact,
+              ),
+              child: const Text(
+                '¿Olvidaste tu contraseña?',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -362,6 +396,340 @@ class _HomeScreenState extends State<HomeScreen>
           },
         ),
       ),
+    );
+  }
+}
+
+class _UsernameRecoverySheet extends StatefulWidget {
+  const _UsernameRecoverySheet();
+
+  @override
+  State<_UsernameRecoverySheet> createState() => _UsernameRecoverySheetState();
+}
+
+class _UsernameRecoverySheetState extends State<_UsernameRecoverySheet> {
+  final _auth = AuthService();
+  final _documentCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+
+  bool _loading = false;
+  bool _done = false;
+  String? _error;
+  String? _emailMasked;
+
+  @override
+  void dispose() {
+    _documentCtrl.dispose();
+    _emailCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final document = _documentCtrl.text.trim();
+    final email = _emailCtrl.text.trim();
+
+    if (document.isEmpty || email.isEmpty) {
+      setState(() => _error = 'Completa documento y correo');
+      return;
+    }
+    if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)) {
+      setState(() => _error = 'Ingresa un correo válido');
+      return;
+    }
+
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    final res = await _auth.recoverUsername(
+      documentNumber: document,
+      email: email,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _loading = false;
+      if (res['success'] == true) {
+        _done = true;
+        _emailMasked = res['email_masked']?.toString() ?? email;
+        _error = null;
+      } else {
+        _error = res['message']?.toString() ??
+            'No se pudo completar la solicitud';
+      }
+    });
+  }
+
+  InputDecoration _fieldDecoration({
+    required String label,
+    required String hint,
+    required IconData icon,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      prefixIcon: Icon(icon, color: LimpioTokens.brand),
+      filled: true,
+      fillColor: LimpioTokens.scaffold,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.viewInsetsOf(context).bottom;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottom),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+            child: _done ? _buildSuccess() : _buildForm(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildForm() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Center(
+          child: Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: LimpioTokens.line,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: LimpioTokens.brandSoft,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.person_search_rounded, color: LimpioTokens.brand),
+                  SizedBox(width: 8),
+                  Text(
+                    'Seguridad de cuenta',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: LimpioTokens.brand,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Recuperar usuario',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: LimpioTokens.ink,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Confirma tu documento y correo. Si coinciden, te enviaremos el usuario.',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  color: LimpioTokens.muted,
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Usa el documento de matrícula y el correo registrado en el Campus Virtual.',
+          style: TextStyle(
+            fontSize: 12.5,
+            color: LimpioTokens.muted.withValues(alpha: 0.95),
+            height: 1.35,
+          ),
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _documentCtrl,
+          enabled: !_loading,
+          keyboardType: TextInputType.number,
+          textInputAction: TextInputAction.next,
+          style: const TextStyle(color: LimpioTokens.ink),
+          decoration: _fieldDecoration(
+            label: 'Número de documento',
+            hint: 'Documento de identidad',
+            icon: Icons.badge_outlined,
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _emailCtrl,
+          enabled: !_loading,
+          keyboardType: TextInputType.emailAddress,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => _loading ? null : _submit(),
+          style: const TextStyle(color: LimpioTokens.ink),
+          decoration: _fieldDecoration(
+            label: 'Correo del Campus',
+            hint: 'tunombre@correo.com',
+            icon: Icons.mail_outline_rounded,
+          ),
+        ),
+        if (_error != null) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: LimpioTokens.danger.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              _error!,
+              style: const TextStyle(
+                color: LimpioTokens.danger,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: _loading ? null : _submit,
+            icon: _loading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.send_rounded, size: 18),
+            label: Text(
+              _loading ? 'Procesando...' : 'Enviar usuario',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+            style: FilledButton.styleFrom(
+              backgroundColor: LimpioTokens.brand,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSuccess() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Center(
+          child: Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: LimpioTokens.line,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        const Center(
+          child: Icon(
+            Icons.mark_email_read_rounded,
+            size: 56,
+            color: LimpioTokens.success,
+          ),
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          'Revisa tu correo',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: LimpioTokens.ink,
+          ),
+        ),
+        const SizedBox(height: 10),
+        const Text(
+          'Si los datos son correctos, enviamos tu usuario a:',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 14,
+            color: LimpioTokens.muted,
+            height: 1.4,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _emailMasked ?? '',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: LimpioTokens.brand,
+          ),
+        ),
+        const SizedBox(height: 10),
+        const Text(
+          'Revisa también la carpeta de spam. Con ese usuario podrás iniciar sesión o recuperar tu contraseña.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 13,
+            color: LimpioTokens.muted,
+            height: 1.4,
+          ),
+        ),
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: FilledButton.styleFrom(
+              backgroundColor: LimpioTokens.brand,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            child: const Text(
+              'Entendido',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -66,9 +66,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       try {
         // Intentamos obtener los datos detallados desde la base de datos (PHP)
         final serviceData = await StudentService().getStudentProfile();
-        if (serviceData != null) {
+        if (serviceData != null && mounted) {
           setState(() {
-            _studentData = serviceData;
+            // Copia: los cambios de foto de abajo no deben alterar el caché del servicio
+            _studentData = Map<String, dynamic>.from(serviceData);
             // Si el servicio no trajo foto (usualmente no la trae), mantenemos la de Moodle
             // pero si hay guardada localmente de InsForge usamos esa prioridad
             if (savedImageUrl != null) {
@@ -994,12 +995,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     BuildContext context,
   ) {
     final String method = (plan['paymentMethod'] ?? '').toString();
-    final bool isContado = method.toLowerCase().contains('contado');
+    final bool isMensualidad = plan['isMensualidad'] == true;
+    final bool isContado =
+        !isMensualidad && method.toLowerCase().contains('contado');
+    final bool isSinglePayment = isMensualidad || isContado;
     final bool isFullyPaid = plan['isFullyPaid'] == true;
     final int pending = (plan['pendingCount'] as int?) ?? 0;
     final List quotas = plan['quotas'] is List ? plan['quotas'] as List : [];
-    final Color methodColor =
-        isContado ? LimpioTokens.success : LimpioTokens.purple;
+    final Color methodColor = isMensualidad
+        ? LimpioTokens.brand
+        : (isContado ? LimpioTokens.success : LimpioTokens.purple);
     final Color statusColor =
         isFullyPaid ? LimpioTokens.success : LimpioTokens.warning;
 
@@ -1026,7 +1031,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      isContado ? 'CONTADO' : 'CUOTAS',
+                      isMensualidad
+                          ? 'MENSUALIDAD'
+                          : (isContado ? 'CONTADO' : 'CUOTAS'),
                       style: TextStyle(
                         color: methodColor,
                         fontWeight: FontWeight.w800,
@@ -1078,8 +1085,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
           children: [
-            if (isContado)
-              _buildContadoPlanBody(plan, fMoney, context)
+            if (isSinglePayment)
+              _buildContadoPlanBody(plan, fMoney, fDate, context)
             else if (quotas.isEmpty)
               Text(
                 'Sin cuotas registradas.',
@@ -1101,10 +1108,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildContadoPlanBody(
     Map<String, dynamic> plan,
     String Function(dynamic) fMoney,
+    String Function(String?) fDate,
     BuildContext context,
   ) {
     final bool paid = plan['contadoPaid'] == true;
     final accent = paid ? LimpioTokens.success : LimpioTokens.warning;
+    final String? coversFrom = plan['coversFrom']?.toString();
+    final String? coversUntil = plan['coversUntil']?.toString();
+    final bool hasPeriod =
+        (coversFrom?.isNotEmpty ?? false) && (coversUntil?.isNotEmpty ?? false);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -1140,6 +1152,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                if (hasPeriod)
+                  Text(
+                    'Cubre del ${fDate(coversFrom)} al ${fDate(coversUntil)}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: context.subtitleColor,
+                    ),
+                  ),
               ],
             ),
           ),

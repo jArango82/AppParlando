@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+import 'net.dart' as http;
 
 /// Servicio para mensajes asesor → estudiante (`student_messages` en Parlando).
 ///
